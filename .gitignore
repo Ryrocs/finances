@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js / vercel
+.next/
+out/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+
+# env files (never commit real secrets)
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+
+# testing
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
