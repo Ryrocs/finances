@@ -33,7 +33,12 @@ export function MovementRow({ tx, onSelect }: { tx: TransactionDTO; onSelect: (t
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-[15px] font-semibold text-ink">{title}</span>
             {tx.recurringId && <Repeat className="h-3.5 w-3.5 shrink-0 text-ink-4" aria-label={t('common.recurring')} />}
-            {tx.isDemo && <Badge size="sm" className="shrink-0">{t('common.demo')}</Badge>}
+            {/* The demo banner already flags demo data; on tiny screens the title gets the space. */}
+            {tx.isDemo && (
+              <Badge size="sm" className="shrink-0 max-[359px]:hidden">
+                {t('common.demo')}
+              </Badge>
+            )}
             {upcoming && (
               <Badge tone="transfer" size="sm" className="shrink-0">
                 {t('common.upcoming')}

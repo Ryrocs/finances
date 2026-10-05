@@ -175,7 +175,6 @@ const ca: Messages = {
     daysElapsed: 'Dia {day} de {days}',
     recentMovements: 'Últims moviments',
     noMovements: 'No hi ha moviments aquest mes.',
-    budgetStatus: 'Pressupost mensual',
     left: 'Queden {amount}',
     over: '{amount} per sobre',
     welcomeTitle: 'Et donem la benvinguda a Finances',

@@ -20,7 +20,11 @@ if (process.env.SKIP_MIGRATIONS === '1') {
   process.exit(0);
 }
 
-const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+const url =
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL;
 if (!url) {
   console.error(
     '[migrate] DATABASE_URL is not set. Connect a Neon Postgres database to this Vercel project ' +

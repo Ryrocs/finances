@@ -177,7 +177,6 @@ const en = {
     daysElapsed: 'Day {day} of {days}',
     recentMovements: 'Recent movements',
     noMovements: 'No movements this month.',
-    budgetStatus: 'Monthly budget',
     left: '{amount} left',
     over: '{amount} over',
     welcomeTitle: 'Welcome to Finances',

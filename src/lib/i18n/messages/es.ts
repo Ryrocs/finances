@@ -175,7 +175,6 @@ const es: Messages = {
     daysElapsed: 'Día {day} de {days}',
     recentMovements: 'Últimos movimientos',
     noMovements: 'No hay movimientos este mes.',
-    budgetStatus: 'Presupuesto mensual',
     left: 'Quedan {amount}',
     over: '{amount} por encima',
     welcomeTitle: 'Te damos la bienvenida a Finances',

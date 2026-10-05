@@ -99,14 +99,16 @@ function BottomNav() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex h-full min-w-0 flex-col items-center justify-center gap-1 px-0.5 transition-colors',
+                  'flex h-full min-w-0 flex-col items-center justify-center gap-1 transition-colors',
                   active ? 'text-brand' : 'text-ink-3 hover:text-ink-2',
                 )}
               >
                 <span className={cn('flex h-8 w-14 max-w-full items-center justify-center rounded-full transition-colors', active && 'bg-brand-soft')}>
                   <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 2} aria-hidden />
                 </span>
-                <span className={cn('w-full truncate text-center text-[11px] leading-none', active ? 'font-semibold' : 'font-medium')}>{t(item.label)}</span>
+                <span className={cn('w-full truncate text-center text-[11px] leading-none tracking-tight max-[359px]:text-[10px]', active ? 'font-semibold' : 'font-medium')}>
+                  {t(item.label)}
+                </span>
               </Link>
             </li>
           );

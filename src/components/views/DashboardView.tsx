@@ -187,12 +187,12 @@ function HeroStat({ icon, label, value, delta, prevName }: { icon: ReactNode; la
   const { t } = useI18n();
   const f = useFormat();
   return (
-    <div className="min-w-0 rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
+    <div className="min-w-0 rounded-2xl bg-white/15 p-3 backdrop-blur-sm max-[359px]:px-2.5">
       <p className="flex items-center gap-1.5 text-[13px] font-medium text-white/85">
         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20">{icon}</span>
         <span className="truncate">{label}</span>
       </p>
-      <p className="mt-1.5 truncate text-lg font-bold leading-tight tabular">{value}</p>
+      <p className="mt-1.5 truncate text-lg font-bold leading-tight tabular max-[359px]:text-[15px]">{value}</p>
       {delta !== null && (
         <p className="mt-0.5 truncate text-[12px] text-white/80">
           {f.percent(delta, { signed: true })} {t('dashboard.vsPrevious', { month: prevName })}
@@ -306,7 +306,7 @@ function BudgetCard({ summary }: { summary: MonthSummaryDTO }) {
   return (
     <Card>
       <CardHeader
-        title={t('dashboard.budgetStatus')}
+        title={t('budget.title')}
         action={
           <ButtonLink href="/budget" variant="link" size="sm">
             {t('common.seeAll')}

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Mobile-first personal finance web app (Next.js + Neon Postgres) built for Vercel.",
   "engines": {
-    "node": ">=20.9"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev",

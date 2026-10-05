@@ -10,7 +10,8 @@ type Global = typeof globalThis & { __financesPool?: Pool; __financesDb?: Databa
 const g = globalThis as Global;
 
 function createPool(): Pool {
-  const connectionString = process.env.DATABASE_URL;
+  // DATABASE_URL is what the Neon integration adds; POSTGRES_URL covers older/renamed setups.
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set. See README.md → Environment variables.');
   }
