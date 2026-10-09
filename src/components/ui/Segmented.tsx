@@ -1,47 +1,44 @@
-'use client';
-
-import { useId, type ReactNode } from 'react';
 import { cn } from './cn';
 
-interface Option<T extends string> {
+export interface SegmentOption<T extends string> {
   value: T;
-  label: ReactNode;
-  activeClassName?: string;
+  label: string;
+  /** Tailwind classes applied when this option is active (e.g. a semantic colour). */
+  activeClass?: string;
 }
 
-/** Radio group styled as a segmented control (keyboard: arrows via native radios). */
 export function Segmented<T extends string>({
   value,
-  onChange,
   options,
+  onChange,
   label,
   size = 'md',
-  className,
 }: {
   value: T;
-  onChange: (v: T) => void;
-  options: Option<T>[];
+  options: readonly SegmentOption<T>[];
+  onChange: (value: T) => void;
   label: string;
   size?: 'sm' | 'md';
-  className?: string;
 }) {
-  const name = useId();
   return (
-    <div role="radiogroup" aria-label={label} className={cn('flex rounded-2xl bg-surface-2 p-1', className)}>
+    <div role="radiogroup" aria-label={label} className="flex min-w-0 gap-1 rounded-2xl bg-soft p-1">
       {options.map((o) => {
         const active = o.value === value;
         return (
-          <label
+          <button
             key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.value)}
             className={cn(
-              'relative flex min-w-0 flex-1 cursor-pointer items-center justify-center rounded-xl px-1 text-center font-semibold tracking-tight transition-colors',
-              size === 'sm' ? 'h-9 text-[13px]' : 'h-11 text-sm max-[400px]:text-[13px] max-[359px]:text-[12px]',
-              active ? cn('bg-surface text-ink shadow-sm', o.activeClassName) : 'text-ink-3 hover:text-ink-2',
+              'min-w-0 flex-1 truncate rounded-xl px-2 font-semibold transition-colors',
+              size === 'md' ? 'h-11 text-[15px]' : 'h-9 text-[13px]',
+              active ? (o.activeClass ?? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)]') : 'text-ink-3 active:bg-soft-2',
             )}
           >
-            <input type="radio" name={name} value={o.value} checked={active} onChange={() => onChange(o.value)} className="sr-only" />
-            <span className="truncate">{o.label}</span>
-          </label>
+            {o.label}
+          </button>
         );
       })}
     </div>

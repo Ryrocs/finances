@@ -1,209 +1,118 @@
 /**
- * Input validation shared by the API (authoritative) and the forms (instant feedback).
- * Error messages are *codes* (e.g. "required", "same_account"), translated in the UI.
+ * Validation shared by the forms (messages under each field) and the data layer (last line of
+ * defence). Messages are in src/texts.ts.
  */
-import { z } from 'zod';
-import { isValidISODate } from './dates';
-import { CATEGORY_COLORS, CATEGORY_ICONS } from './categories';
+import { T } from '../texts';
+import { formatShortDate, isValidISODate, type ISODate } from './dates';
 import { MAX_AMOUNT_CENTS } from './money';
-import { ACCOUNT_TYPES, CATEGORY_GROUPS, CATEGORY_KINDS, CURRENCIES, FREQUENCIES, LOCALES } from './types';
+import type { Account, AccountType, Category, Frequency, TransactionType } from './types';
 
-const required = (iss: { input: unknown }) => (iss.input === undefined || iss.input === null || iss.input === '' ? 'required' : 'invalid');
+export type FieldErrors<K extends string> = Partial<Record<K, string>>;
 
-const trimmed = (max: number) =>
-  z
-    .string({ error: required })
-    .trim()
-    .max(max, { error: 'too_long' });
+export interface MovementInput {
+  type: TransactionType;
+  date: ISODate;
+  amountCents: number | null;
+  categoryId?: string;
+  accountId?: string;
+  toAccountId?: string;
+  description?: string;
+  notes?: string;
+}
 
-const nonEmpty = (max: number) => trimmed(max).min(1, { error: 'required' });
+export type MovementField = 'amount' | 'category' | 'account' | 'toAccount' | 'date';
 
-const isoDate = z.string({ error: required }).refine(isValidISODate, { error: 'invalid_date' });
+type AccountRef = Pick<Account, 'id' | 'name' | 'initialBalanceDate'>;
+type CategoryRef = Pick<Category, 'id' | 'kind'>;
 
-const id = z.uuid({ error: required });
+export function validateMovement(input: MovementInput, accounts: readonly AccountRef[], categories: readonly CategoryRef[]): FieldErrors<MovementField> {
+  const errors: FieldErrors<MovementField> = {};
+  const v = T.validation;
 
-const positiveAmount = z
-  .number({ error: required })
-  .int({ error: 'invalid' })
-  .min(1, { error: 'amount_positive' })
-  .max(MAX_AMOUNT_CENTS, { error: 'amount_too_large' });
+  if (input.amountCents === null || !Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.amount = v.amountRequired;
+  else if (input.amountCents > MAX_AMOUNT_CENTS) errors.amount = v.amountTooLarge;
 
-const signedAmount = z
-  .number({ error: required })
-  .int({ error: 'invalid' })
-  .min(-MAX_AMOUNT_CENTS, { error: 'amount_too_large' })
-  .max(MAX_AMOUNT_CENTS, { error: 'amount_too_large' });
-
-const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, { error: 'invalid' });
-
-const optionalNotes = z
-  .string()
-  .trim()
-  .max(500, { error: 'too_long' })
-  .nullish()
-  .transform((v) => (v ? v : null));
-
-// ---------- Auth & profile ----------
-
-export const emailSchema = z
-  .string({ error: required })
-  .trim()
-  .toLowerCase()
-  .pipe(z.email({ error: (iss) => (iss.input === '' ? 'required' : 'invalid_email') }).max(254, { error: 'too_long' }));
-
-export const passwordSchema = z
-  .string({ error: required })
-  .min(8, { error: 'password_too_short' })
-  .max(200, { error: 'too_long' });
-
-export const signupSchema = z.object({
-  name: trimmed(80).optional().default(''),
-  email: emailSchema,
-  password: passwordSchema,
-  locale: z.enum(LOCALES).optional(),
-  timezone: z.string().max(64).optional(),
-});
-
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: z.string({ error: required }).min(1, { error: 'required' }).max(200, { error: 'too_long' }),
-});
-
-export const profileSchema = z
-  .object({
-    name: trimmed(80),
-    locale: z.enum(LOCALES, { error: 'invalid' }),
-    currency: z.enum(CURRENCIES, { error: 'invalid' }),
-    timezone: z.string().max(64),
-  })
-  .partial();
-
-export const changePasswordSchema = z.object({
-  currentPassword: z.string({ error: required }).min(1, { error: 'required' }),
-  newPassword: passwordSchema,
-});
-
-export const deleteAccountSchema = z.object({
-  password: z.string({ error: required }).min(1, { error: 'required' }),
-});
-
-// ---------- Accounts ----------
-
-export const accountSchema = z.object({
-  name: nonEmpty(60),
-  type: z.enum(ACCOUNT_TYPES, { error: required }),
-  initialBalanceCents: signedAmount,
-  initialBalanceDate: isoDate,
-  isLiquid: z.boolean({ error: required }),
-  color: hexColor.optional(),
-  archived: z.boolean().optional(),
-});
-
-export const accountUpdateSchema = accountSchema.partial();
-
-// ---------- Categories ----------
-
-export const categorySchema = z.object({
-  name: nonEmpty(40),
-  kind: z.enum(CATEGORY_KINDS, { error: required }),
-  group: z.enum(CATEGORY_GROUPS, { error: required }),
-  icon: z.enum(CATEGORY_ICONS, { error: 'invalid' }),
-  color: z.enum(CATEGORY_COLORS, { error: 'invalid' }).or(hexColor),
-});
-
-export const categoryUpdateSchema = categorySchema.omit({ kind: true }).partial();
-
-// ---------- Movements ----------
-
-const movementCommon = {
-  amountCents: positiveAmount,
-  accountId: id,
-  description: trimmed(120).optional().default(''),
-  notes: optionalNotes,
-};
-
-const movementBase = { ...movementCommon, date: isoDate };
-
-export const transactionSchema = z
-  .discriminatedUnion(
-    'type',
-    [
-      z.object({ type: z.literal('expense'), ...movementBase, categoryId: id }),
-      z.object({ type: z.literal('income'), ...movementBase, categoryId: id }),
-      z.object({ type: z.literal('transfer'), ...movementBase, toAccountId: id }),
-    ],
-    { error: 'invalid_type' },
-  )
-  .superRefine((value, ctx) => {
-    if (value.type === 'transfer' && value.toAccountId === value.accountId) {
-      ctx.addIssue({ code: 'custom', path: ['toAccountId'], message: 'same_account' });
-    }
-  });
-
-export type TransactionInput = z.infer<typeof transactionSchema>;
-
-// ---------- Budgets ----------
-
-export const budgetSchema = z.object({
-  categoryId: id.nullable(),
-  amountCents: positiveAmount,
-});
-
-// ---------- Recurring ----------
-
-const recurringFields = {
-  ...movementCommon,
-  frequency: z.enum(FREQUENCIES, { error: required }),
-  interval: z.number().int().min(1, { error: 'invalid' }).max(12, { error: 'invalid' }).optional().default(1),
-  startDate: isoDate,
-  endDate: isoDate.nullish().transform((v) => v ?? null),
-  isActive: z.boolean().optional().default(true),
-};
-
-export const recurringSchema = z
-  .discriminatedUnion(
-    'type',
-    [
-      z.object({ type: z.literal('expense'), ...recurringFields, categoryId: id }),
-      z.object({ type: z.literal('income'), ...recurringFields, categoryId: id }),
-      z.object({ type: z.literal('transfer'), ...recurringFields, toAccountId: id }),
-    ],
-    { error: 'invalid_type' },
-  )
-  .superRefine((value, ctx) => {
-    if (value.type === 'transfer' && value.toAccountId === value.accountId) {
-      ctx.addIssue({ code: 'custom', path: ['toAccountId'], message: 'same_account' });
-    }
-    if (value.endDate && value.endDate < value.startDate) {
-      ctx.addIssue({ code: 'custom', path: ['endDate'], message: 'end_before_start' });
-    }
-  });
-
-export type RecurringInput = z.infer<typeof recurringSchema>;
-
-// ---------- Helpers ----------
-
-const KNOWN_CODES = new Set([
-  'required',
-  'invalid',
-  'invalid_date',
-  'invalid_email',
-  'invalid_type',
-  'too_long',
-  'password_too_short',
-  'amount_positive',
-  'amount_too_large',
-  'same_account',
-  'end_before_start',
-]);
-
-/** Converts a ZodError into { field: code } using only known, translatable codes. */
-export function fieldErrors(error: z.ZodError): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const field = issue.path.length ? issue.path.join('.') : '_form';
-    if (out[field]) continue;
-    out[field] = KNOWN_CODES.has(issue.message) ? issue.message : 'invalid';
+  if (input.type !== 'transfer') {
+    const category = categories.find((c) => c.id === input.categoryId);
+    if (!category || category.kind !== input.type) errors.category = v.categoryRequired;
   }
-  return out;
+
+  const account = accounts.find((a) => a.id === input.accountId);
+  if (!account) errors.account = input.type === 'transfer' ? v.fromAccountRequired : v.accountRequired;
+
+  let toAccount: AccountRef | undefined;
+  if (input.type === 'transfer') {
+    toAccount = accounts.find((a) => a.id === input.toAccountId);
+    if (!toAccount) errors.toAccount = v.toAccountRequired;
+    else if (toAccount.id === input.accountId) errors.toAccount = v.sameAccount;
+  }
+
+  if (!isValidISODate(input.date)) errors.date = v.dateRequired;
+  else {
+    // A movement can't be earlier than the initial balance of the account(s) it touches.
+    const limit = [account, toAccount].filter((a): a is AccountRef => !!a).find((a) => input.date < a.initialBalanceDate);
+    if (limit) errors.date = v.dateBeforeInitial(limit.name, formatShortDate(limit.initialBalanceDate, 0));
+  }
+  return errors;
+}
+
+export interface ScheduleInput {
+  frequency: Frequency;
+  startDate: ISODate;
+  endDate?: ISODate;
+}
+
+export type ScheduleField = 'endDate';
+
+export function validateSchedule(input: ScheduleInput): FieldErrors<ScheduleField> {
+  if (input.endDate && input.endDate < input.startDate) return { endDate: T.validation.endBeforeStart };
+  return {};
+}
+
+export interface AccountInput {
+  name: string;
+  type: AccountType;
+  color: string;
+  initialBalanceCents: number | null;
+  initialBalanceDate: ISODate;
+  tae?: number | null;
+  withholdingPct?: number | null;
+}
+
+export type AccountField = 'name' | 'initialBalance' | 'initialBalanceDate' | 'tae' | 'withholdingPct';
+
+/** `earliestMovement`: the oldest movement of the account, which the initial date can't pass. */
+export function validateAccount(input: AccountInput, earliestMovement?: ISODate | null): FieldErrors<AccountField> {
+  const errors: FieldErrors<AccountField> = {};
+  const v = T.validation;
+  if (!input.name.trim()) errors.name = v.nameRequired;
+  if (input.initialBalanceCents === null || !Number.isInteger(input.initialBalanceCents)) errors.initialBalance = v.initialBalanceRequired;
+  else if (Math.abs(input.initialBalanceCents) > MAX_AMOUNT_CENTS) errors.initialBalance = v.amountTooLarge;
+  if (!isValidISODate(input.initialBalanceDate)) errors.initialBalanceDate = v.dateRequired;
+  else if (earliestMovement && earliestMovement < input.initialBalanceDate) {
+    errors.initialBalanceDate = v.initialAfterMovements(formatShortDate(earliestMovement, 0));
+  }
+  if (input.type === 'remunerat') {
+    if (input.tae !== null && input.tae !== undefined && (!Number.isFinite(input.tae) || input.tae < 0 || input.tae > 50)) errors.tae = v.taeRange;
+    if (
+      input.withholdingPct !== null &&
+      input.withholdingPct !== undefined &&
+      (!Number.isFinite(input.withholdingPct) || input.withholdingPct < 0 || input.withholdingPct > 100)
+    ) {
+      errors.withholdingPct = v.withholdingRange;
+    }
+  }
+  return errors;
+}
+
+/** Parses a percentage typed with a comma or a point ("2,5" → 2.5). Empty → null, invalid → NaN. */
+export function parsePercent(text: string): number | null {
+  const s = text.trim().replace(/\s|%/g, '').replace(',', '.');
+  if (s === '') return null;
+  if (!/^\d+(\.\d+)?$/.test(s)) return Number.NaN;
+  return Number(s);
+}
+
+export function hasErrors(errors: object): boolean {
+  return Object.values(errors).some(Boolean);
 }

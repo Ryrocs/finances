@@ -1,232 +1,105 @@
-/** DTOs shared by the API (server) and the UI (client). Money is always integer cents. */
+import type { ISODate, MonthKey } from './dates';
 
-export const LOCALES = ['ca', 'es', 'en'] as const;
-export type Locale = (typeof LOCALES)[number];
+export type AccountType = 'corrent' | 'remunerat' | 'efectiu' | 'altre';
 
-export const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'] as const;
-export type Currency = (typeof CURRENCIES)[number];
-
-export const TRANSACTION_TYPES = ['expense', 'income', 'transfer'] as const;
-export type TransactionType = (typeof TRANSACTION_TYPES)[number];
-
-export const ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'other'] as const;
-export type AccountType = (typeof ACCOUNT_TYPES)[number];
-
-export const CATEGORY_KINDS = ['expense', 'income'] as const;
-export type CategoryKind = (typeof CATEGORY_KINDS)[number];
-
-export const CATEGORY_GROUPS = ['needs', 'lifestyle', 'other', 'income'] as const;
-export type CategoryGroup = (typeof CATEGORY_GROUPS)[number];
-
-export const FREQUENCIES = ['weekly', 'monthly', 'yearly'] as const;
-export type Frequency = (typeof FREQUENCIES)[number];
-
-export const NET_WORTH_PERIODS = ['30d', '3m', '6m', '12m', 'all'] as const;
-export type NetWorthPeriod = (typeof NET_WORTH_PERIODS)[number];
-
-export interface MeDTO {
-  id: string;
-  email: string;
-  name: string;
-  locale: Locale;
-  currency: Currency;
-  timezone: string;
-  today: string;
-  hasDemoData: boolean;
-}
-
-export interface AccountDTO {
+export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  color: string;
   initialBalanceCents: number;
-  initialBalanceDate: string;
-  currency: string;
-  isLiquid: boolean;
-  color: string;
-  sortOrder: number;
-  archived: boolean;
-  isDemo: boolean;
-  /** Balance as of today (user's time zone). */
-  balanceCents: number;
-  transactionCount: number;
+  initialBalanceDate: ISODate;
+  /** Annual equivalent rate in % (e.g. 2.5). Only for 'remunerat'. */
+  tae?: number;
+  /** Tax withheld on interest, in % (default 19). */
+  withholdingPct?: number;
+  order: number;
+  createdAt: number;
 }
 
-export interface CategoryDTO {
+export type CategoryKind = 'expense' | 'income';
+export type CategoryGroup = 'necessitats' | 'oci' | 'altres';
+
+export interface Category {
   id: string;
-  key: string | null;
-  name: string | null;
+  name: string;
+  emoji: string;
+  color: string;
   kind: CategoryKind;
-  group: CategoryGroup;
-  icon: string;
-  color: string;
-  sortOrder: number;
-  archived: boolean;
+  /** Only for expenses. */
+  group?: CategoryGroup;
+  order: number;
+  createdAt: number;
 }
 
-export interface TransactionDTO {
+export type TransactionType = 'expense' | 'income' | 'transfer';
+export type TransactionSource = 'manual' | 'recurring' | 'interest';
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  date: ISODate;
+  /** Always positive. */
+  amountCents: number;
+  /** Required for expense/income, absent for transfers. */
+  categoryId?: string;
+  /** The account (the source account for a transfer). */
+  accountId: string;
+  /** Destination account (transfers only). */
+  toAccountId?: string;
+  description?: string;
+  notes?: string;
+  source: TransactionSource;
+  recurringId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type Frequency = 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringRule {
   id: string;
   type: TransactionType;
   amountCents: number;
-  date: string;
+  categoryId?: string;
   accountId: string;
-  toAccountId: string | null;
-  categoryId: string | null;
-  description: string;
-  notes: string | null;
-  recurringId: string | null;
-  isDemo: boolean;
-  createdAt: string;
-}
-
-export interface TransactionListDTO {
-  items: TransactionDTO[];
-  nextCursor: string | null;
-  totals: { count: number; incomeCents: number; expenseCents: number };
-}
-
-export interface BudgetDTO {
-  id: string;
-  categoryId: string | null;
-  amountCents: number;
-  isDemo: boolean;
-}
-
-export type BudgetLevel = 'ok' | 'warning' | 'exceeded';
-
-export interface BudgetStatus {
-  budgetCents: number;
-  spentCents: number;
-  remainingCents: number;
-  /** Rounded percentage spent (can exceed 100). */
-  percent: number;
-  level: BudgetLevel;
-}
-
-export interface BudgetStatusDTO extends BudgetStatus {
-  id: string;
-  categoryId: string | null;
-}
-
-export interface BudgetAlert {
-  categoryId: string | null;
-  level: BudgetLevel;
-  percent: number;
-  remainingCents: number;
-}
-
-export interface BudgetOverviewDTO {
-  month: string;
-  overall: BudgetStatusDTO | null;
-  categories: BudgetStatusDTO[];
-  /** Spending in categories without their own budget (for context). */
-  unbudgetedSpentCents: number;
-  totalSpentCents: number;
-  /** Days remaining in the month including today (0 for past months). */
-  daysLeft: number;
-}
-
-export interface RecurringDTO {
-  id: string;
-  type: TransactionType;
-  amountCents: number;
-  accountId: string;
-  toAccountId: string | null;
-  categoryId: string | null;
-  description: string;
-  notes: string | null;
+  toAccountId?: string;
+  description?: string;
+  notes?: string;
   frequency: Frequency;
-  interval: number;
-  startDate: string;
-  endDate: string | null;
-  isActive: boolean;
-  isDemo: boolean;
-  nextDate: string | null;
-  lastGeneratedDate: string | null;
+  /** Monthly/yearly. Clamped to the last day of shorter months. */
+  dayOfMonth?: number;
+  /** Weekly. ISO weekday, 1 = Monday … 7 = Sunday. */
+  weekday?: number;
+  startDate: ISODate;
+  endDate?: ISODate;
+  /** Last occurrence already turned into a movement. */
+  lastGeneratedDate?: ISODate;
+  active: boolean;
+  createdAt: number;
 }
 
-export interface CategoryAmount {
-  categoryId: string;
-  amountCents: number;
-  count: number;
+export interface Budget {
+  id: string;
+  /** 'default' applies to every month that has no budget of its own. */
+  month: 'default' | MonthKey;
+  totalCents?: number;
+  /** categoryId → cents. Missing = no budget for that category. */
+  perCategory: Record<string, number>;
 }
 
-export type ProjectionStatus = 'available' | 'too_early' | 'past' | 'future';
-export type ProjectionReference = 'budget' | 'average' | 'income';
-
-export interface ProjectionDTO {
-  status: ProjectionStatus;
-  projectedCents: number;
-  dailyRateCents: number;
-  daysElapsed: number;
-  daysInMonth: number;
-  fixedCents: number;
-  variableCents: number;
-  reference: ProjectionReference | null;
-  referenceCents: number;
-  /** true when the projection exceeds the reference (budget / usual spending / income). */
-  high: boolean;
+export interface SettingsMap {
+  onboardingDone: boolean;
+  lastAccountId: string;
+  /** Epoch ms of the last JSON backup. */
+  lastBackupAt: number;
+  /** accountId → last month ('YYYY-MM') whose interest was already generated. */
+  interestProcessed: Record<string, MonthKey>;
 }
 
-export interface MonthSummaryDTO {
-  month: string;
-  today: string;
-  incomeCents: number;
-  expenseCents: number;
-  balanceCents: number;
-  transactionCount: number;
-  expensesByCategory: CategoryAmount[];
-  incomeByCategory: CategoryAmount[];
-  groupTotals: Record<'needs' | 'lifestyle' | 'other', number>;
-  previous: { month: string; incomeCents: number; expenseCents: number };
-  netWorth: { asOf: string; liquidCents: number };
-  projection: ProjectionDTO;
-  budgets: BudgetOverviewDTO;
-  recent: TransactionDTO[];
-}
+export type SettingKey = keyof SettingsMap;
 
-export interface MonthlyPoint {
-  month: string;
-  incomeCents: number;
-  expenseCents: number;
-  balanceCents: number;
-}
-
-export interface AnalyticsDTO {
-  months: string[];
-  series: MonthlyPoint[];
-  /** month → categoryId → expense cents */
-  expensesByMonth: Record<string, Record<string, number>>;
-  incomeByMonth: Record<string, Record<string, number>>;
-}
-
-export interface NetWorthPoint {
-  date: string;
-  cents: number;
-}
-
-export interface NetWorthDTO {
-  today: string;
-  period: NetWorthPeriod;
-  liquidCents: number;
-  nonLiquidCents: number;
-  accounts: AccountDTO[];
-  series: NetWorthPoint[];
-  change: { fromCents: number; toCents: number; diffCents: number; percent: number | null };
-}
-
-export type ApiErrorCode =
-  | 'validation'
-  | 'unauthorized'
-  | 'forbidden'
-  | 'not_found'
-  | 'conflict'
-  | 'email_taken'
-  | 'invalid_credentials'
-  | 'rate_limited'
-  | 'bad_origin'
-  | 'server_error';
-
-export interface ApiErrorBody {
-  error: { code: ApiErrorCode; fields?: Record<string, string> };
+export interface SettingRow<K extends SettingKey = SettingKey> {
+  key: K;
+  value: SettingsMap[K];
 }

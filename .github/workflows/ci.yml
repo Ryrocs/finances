@@ -11,20 +11,8 @@ concurrency:
 
 jobs:
   checks:
-    name: Lint, types, unit + integration tests
+    name: Lint, types and unit tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: finances
-          POSTGRES_PASSWORD: finances
-          POSTGRES_DB: finances_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U finances" --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://finances:finances@localhost:5432/finances_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,19 +27,6 @@ jobs:
   e2e:
     name: E2E (production build, mobile viewports)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: finances
-          POSTGRES_PASSWORD: finances
-          POSTGRES_DB: finances_e2e
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U finances" --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      DATABASE_URL: postgresql://finances:finances@localhost:5432/finances_e2e
-      E2E_DATABASE_URL: postgresql://finances:finances@localhost:5432/finances_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,7 +35,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run db:migrate
       - run: npm run build
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4

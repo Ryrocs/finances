@@ -1,95 +1,104 @@
 import { describe, expect, it } from 'vitest';
-import { centsToInput, formatMoney, parseAmountToCents, percentOf, sumCents } from '@/lib/money';
+import { centsToInput, formatDecimal, formatEUR, formatEURCompact, formatPercent, parseAmount } from '../../src/lib/money';
 
-describe('parseAmountToCents', () => {
-  it.each([
-    ['12,34', 1234],
-    ['12.34', 1234],
-    ['12', 1200],
-    ['12,5', 1250],
-    ['0,99', 99],
-    [',5', 50],
-    ['12,', 1200],
-    ['1.234,56', 123456],
-    ['1,234.56', 123456],
-    ['1.234', 123400],
-    ['1,234,567', 123456700],
-    ['12.345.678,90', 1234567890],
-    ['1 234,50', 123450],
-    ['€ 20', 2000],
-    ['20 €', 2000],
-    ['0012,30', 1230],
-  ])('parses %s → %i cents', (input, cents) => {
-    expect(parseAmountToCents(input)).toBe(cents);
+const NBSP = String.fromCharCode(0xa0);
+const MINUS = String.fromCharCode(0x2212);
+/** Test helper: write expectations with normal spaces and "-". */
+const n = (s: string) => s.replace(/ /g, NBSP).replace(/-/g, MINUS);
+
+describe('formatEUR', () => {
+  it('always groups thousands with a dot, also with 4 digits', () => {
+    expect(formatEUR(183157)).toBe(n('1.831,57 €'));
+    expect(formatEUR(100000)).toBe(n('1.000,00 €'));
+    expect(formatEUR(123456789)).toBe(n('1.234.567,89 €'));
+    expect(formatEUR(99999)).toBe(n('999,99 €'));
   });
 
-  it.each(['', 'abc', '12,345', '1.2.3', '1234.567', '0,125', '12,3,4', '1.234.56', '--5', '1e3'])('rejects %s', (input) => {
-    // "12,345" is three decimals after the only separator but too ambiguous → treated as thousands only if grouping is valid
-    const value = parseAmountToCents(input);
-    if (input === '12,345') expect(value).toBe(1234500);
-    else expect(value).toBeNull();
+  it('formats small amounts and zero', () => {
+    expect(formatEUR(0)).toBe(n('0,00 €'));
+    expect(formatEUR(5)).toBe(n('0,05 €'));
+    expect(formatEUR(2450)).toBe(n('24,50 €'));
   });
 
-  it('rejects negatives unless allowed', () => {
-    expect(parseAmountToCents('-12,50')).toBeNull();
-    expect(parseAmountToCents('-12,50', { allowNegative: true })).toBe(-1250);
+  it('uses a real minus sign and an optional plus', () => {
+    expect(formatEUR(-183157)).toBe(n('-1.831,57 €'));
+    expect(formatEUR(2450, { signed: true })).toBe(n('+24,50 €'));
+    expect(formatEUR(0, { signed: true })).toBe(n('0,00 €'));
   });
 
-  it('rejects absurdly large amounts', () => {
-    expect(parseAmountToCents('99999999999999')).toBeNull();
-    expect(parseAmountToCents('999999999999,99')).toBe(99_999_999_999_999);
+  it('can drop decimals', () => {
+    expect(formatEUR(183157, { whole: true })).toBe(n('1.832 €'));
   });
 
-  it('never produces floating point artefacts', () => {
-    // 12.34 * 100 = 1233.9999999999998 in floating point; the parser works on digits.
-    expect(parseAmountToCents('12.34')).toBe(1234);
-    expect(parseAmountToCents('0.29')).toBe(29);
-    expect(parseAmountToCents('1.005')).toBe(100500); // thousands separator, not a float
+  it('never lets the € wrap onto its own line', () => {
+    expect(formatEUR(183157)).toContain(NBSP + '€');
+    expect(formatEUR(183157)).not.toContain(' ');
   });
 });
 
-describe('formatMoney', () => {
-  it('formats EUR per locale', () => {
-    expect(formatMoney(123456, 'ca-ES')).toBe('1.234,56 €');
-    expect(formatMoney(123456, 'en-GB')).toBe('€1,234.56');
-    expect(formatMoney(1234, 'es-ES')).toBe('12,34 €');
+describe('formatEURCompact', () => {
+  it('abbreviates thousands and millions', () => {
+    expect(formatEURCompact(95000)).toBe(n('950 €'));
+    expect(formatEURCompact(150000)).toBe(n('1,5k €'));
+    expect(formatEURCompact(1230000)).toBe(n('12k €'));
+    expect(formatEURCompact(125000000)).toBe(n('1,3M €'));
+    expect(formatEURCompact(-150000)).toBe(n('-1,5k €'));
+    expect(formatEURCompact(200000)).toBe(n('2k €'));
+  });
+});
+
+describe('formatDecimal / formatPercent', () => {
+  it('uses a decimal comma', () => {
+    expect(formatDecimal(1234.5, 1)).toBe('1.234,5');
+    expect(formatPercent(12.345)).toBe(n('12,3 %'));
+    expect(formatPercent(50)).toBe(n('50 %'));
+    expect(formatPercent(-4.25, 1)).toBe(n('-4,3 %'));
+    expect(formatPercent(7.5, 1, { signed: true })).toBe(n('+7,5 %'));
+  });
+});
+
+describe('parseAmount', () => {
+  it('accepts a decimal comma or point', () => {
+    expect(parseAmount('24,50')).toBe(2450);
+    expect(parseAmount('24,5')).toBe(2450);
+    expect(parseAmount('24.5')).toBe(2450);
+    expect(parseAmount('24')).toBe(2400);
+    expect(parseAmount(',5')).toBe(50);
+    expect(parseAmount('0,01')).toBe(1);
   });
 
-  it('uses a real minus sign and optional plus', () => {
-    expect(formatMoney(-2000, 'ca-ES')).toBe('−20,00 €');
-    expect(formatMoney(5500, 'ca-ES', 'EUR', { signed: true })).toBe('+55,00 €');
-    expect(formatMoney(0, 'ca-ES', 'EUR', { signed: true })).toBe('0,00 €');
+  it('understands thousands separators', () => {
+    expect(parseAmount('1.234,56')).toBe(123456);
+    expect(parseAmount('1.234')).toBe(123400);
+    expect(parseAmount('1,234.56')).toBe(123456);
+    expect(parseAmount('1 234,56')).toBe(123456);
+    expect(parseAmount('€ 12')).toBe(1200);
   });
 
-  it('keeps cents exact', () => {
-    expect(formatMoney(1234, 'en-GB')).toBe('€12.34');
-    expect(formatMoney(sumCents([10, 10, 10, 10, 10, 10, 10, 10, 10, 10]), 'en-GB')).toBe('€1.00');
+  it('never goes through floats', () => {
+    expect(parseAmount('0,1')).toBe(10);
+    expect(parseAmount('0,2')).toBe(20);
+    expect(parseAmount('19,99')).toBe(1999);
+    expect(parseAmount('1,005')).toBe(100500);
   });
 
-  it('can drop decimals for headlines', () => {
-    expect(formatMoney(78049, 'ca-ES', 'EUR', { whole: true })).toBe('780 €');
+  it('rejects invalid input', () => {
+    expect(parseAmount('')).toBeNull();
+    expect(parseAmount('abc')).toBeNull();
+    expect(parseAmount('1,2,3')).toBeNull();
+    expect(parseAmount('12,345,6')).toBeNull();
+    expect(parseAmount('1.2345')).toBeNull();
+  });
+
+  it('keeps the sign so the form can reject negatives', () => {
+    expect(parseAmount('-5')).toBe(-500);
   });
 });
 
 describe('centsToInput', () => {
-  it('uses the locale decimal separator', () => {
-    expect(centsToInput(1250, 'ca-ES')).toBe('12,50');
-    expect(centsToInput(1250, 'en-GB')).toBe('12.50');
-    expect(centsToInput(1200, 'es-ES')).toBe('12');
-    expect(centsToInput(-505, 'ca-ES')).toBe('-5,05');
-  });
-
-  it('round-trips through the parser', () => {
-    for (const cents of [1, 99, 100, 1234, 99999, 123456789]) {
-      expect(parseAmountToCents(centsToInput(cents, 'ca-ES'))).toBe(cents);
-      expect(parseAmountToCents(centsToInput(cents, 'en-GB'))).toBe(cents);
-    }
-  });
-});
-
-describe('percentOf', () => {
-  it('rounds to one decimal and handles zero totals', () => {
-    expect(percentOf(1, 3)).toBe(33.3);
-    expect(percentOf(5, 0)).toBe(0);
+  it('round-trips with parseAmount', () => {
+    for (const cents of [0, 1, 50, 2450, 183157, 100000]) expect(parseAmount(centsToInput(cents))).toBe(cents);
+    expect(centsToInput(2450)).toBe('24,50');
+    expect(centsToInput(1200)).toBe('12');
   });
 });

@@ -1,77 +1,123 @@
 /**
  * Account balances and liquid wealth.
  *
- *   balance = initial + income − expenses − outgoing transfers + incoming transfers
+ *   balance(D) = initial balance (if its date ≤ D)
+ *              + income - expenses - outgoing transfers + incoming transfers   (dated ≤ D)
  *
- * Transfers move money between accounts: they change account balances but never cash flow,
- * and a transfer between two liquid accounts leaves liquid wealth unchanged.
+ * Every account is liquid, so liquid wealth is the sum of all balances. A transfer between two of
+ * my accounts changes both balances and leaves the total untouched.
  */
-import type { TransactionType } from '../types';
+import { addDays, diffDays, type ISODate } from '../dates';
+import type { Account, Transaction } from '../types';
 
-export interface AccountFlows {
-  incomeCents: number;
-  expenseCents: number;
-  transferOutCents: number;
-  transferInCents: number;
-}
-
-export const EMPTY_FLOWS: AccountFlows = { incomeCents: 0, expenseCents: 0, transferOutCents: 0, transferInCents: 0 };
-
-export function accountBalance(initialCents: number, flows: AccountFlows): number {
-  return initialCents + flows.incomeCents - flows.expenseCents - flows.transferOutCents + flows.transferInCents;
-}
-
-export interface MovementLike {
-  type: TransactionType;
-  amountCents: number;
-  accountId: string;
-  toAccountId: string | null;
-  date: string;
-}
+type AccountLike = Pick<Account, 'id' | 'initialBalanceCents' | 'initialBalanceDate'>;
+type TxLike = Pick<Transaction, 'type' | 'amountCents' | 'accountId' | 'toAccountId' | 'date'>;
 
 /** Effect of one movement on one account (positive = money in). */
-export function movementEffect(m: MovementLike, accountId: string): number {
-  if (m.type === 'income') return m.accountId === accountId ? m.amountCents : 0;
-  if (m.type === 'expense') return m.accountId === accountId ? -m.amountCents : 0;
+export function movementEffect(tx: TxLike, accountId: string): number {
+  if (tx.type === 'income') return tx.accountId === accountId ? tx.amountCents : 0;
+  if (tx.type === 'expense') return tx.accountId === accountId ? -tx.amountCents : 0;
   let effect = 0;
-  if (m.accountId === accountId) effect -= m.amountCents;
-  if (m.toAccountId === accountId) effect += m.amountCents;
+  if (tx.accountId === accountId) effect -= tx.amountCents;
+  if (tx.toAccountId === accountId) effect += tx.amountCents;
   return effect;
 }
 
-/** Aggregates movements dated ≤ asOf into flows for one account. */
-export function flowsForAccount(movements: Iterable<MovementLike>, accountId: string, asOf?: string): AccountFlows {
-  const flows = { ...EMPTY_FLOWS };
-  for (const m of movements) {
-    if (asOf && m.date > asOf) continue;
-    if (m.type === 'income' && m.accountId === accountId) flows.incomeCents += m.amountCents;
-    else if (m.type === 'expense' && m.accountId === accountId) flows.expenseCents += m.amountCents;
-    else if (m.type === 'transfer') {
-      if (m.accountId === accountId) flows.transferOutCents += m.amountCents;
-      if (m.toAccountId === accountId) flows.transferInCents += m.amountCents;
-    }
+/** Balance of one account at the end of day `asOf`. */
+export function balanceAsOf(account: AccountLike, txs: Iterable<TxLike>, asOf: ISODate): number {
+  let balance = account.initialBalanceDate <= asOf ? account.initialBalanceCents : 0;
+  for (const tx of txs) {
+    if (tx.date <= asOf) balance += movementEffect(tx, account.id);
   }
-  return flows;
+  return balance;
 }
 
-export interface AccountForBalance {
-  id: string;
-  initialBalanceCents: number;
-  initialBalanceDate: string;
-  isLiquid: boolean;
+/** Balances of every account at the end of `asOf`, in one pass over the movements. */
+export function balancesAsOf(accounts: readonly AccountLike[], txs: Iterable<TxLike>, asOf: ISODate): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const a of accounts) out.set(a.id, a.initialBalanceDate <= asOf ? a.initialBalanceCents : 0);
+  for (const tx of txs) {
+    if (tx.date > asOf) continue;
+    if (tx.type === 'income') addTo(out, tx.accountId, tx.amountCents);
+    else if (tx.type === 'expense') addTo(out, tx.accountId, -tx.amountCents);
+    else {
+      addTo(out, tx.accountId, -tx.amountCents);
+      if (tx.toAccountId) addTo(out, tx.toAccountId, tx.amountCents);
+    }
+  }
+  return out;
+}
+
+function addTo(map: Map<string, number>, key: string, delta: number) {
+  const current = map.get(key);
+  if (current !== undefined) map.set(key, current + delta);
+}
+
+/** Liquid wealth = Σ balances of all accounts at the end of `asOf`. */
+export function wealthAsOf(accounts: readonly AccountLike[], txs: Iterable<TxLike>, asOf: ISODate): number {
+  let total = 0;
+  for (const v of balancesAsOf(accounts, txs, asOf).values()) total += v;
+  return total;
+}
+
+/** Earliest initial-balance date: before it there is no data at all. */
+export function earliestStart(accounts: readonly AccountLike[]): ISODate | null {
+  let min: ISODate | null = null;
+  for (const a of accounts) if (min === null || a.initialBalanceDate < min) min = a.initialBalanceDate;
+  return min;
+}
+
+export interface DailyPoint {
+  date: ISODate;
+  cents: number;
 }
 
 /**
- * Balance of an account at the end of `asOf`. The initial balance applies from its date;
- * movements count from their own date.
+ * Balance at the end of every day from `from` to `to` (inclusive), for a set of accounts
+ * (all of them for liquid wealth, or a single one). Runs in O(days + movements).
  */
-export function balanceAsOf(account: AccountForBalance, movements: Iterable<MovementLike>, asOf: string): number {
-  const initial = account.initialBalanceDate <= asOf ? account.initialBalanceCents : 0;
-  return accountBalance(initial, flowsForAccount(movements, account.id, asOf));
+export function dailyBalances(accounts: readonly AccountLike[], txs: Iterable<TxLike>, from: ISODate, to: ISODate): DailyPoint[] {
+  if (to < from) return [];
+  const ids = new Set(accounts.map((a) => a.id));
+  const days = diffDays(from, to) + 1;
+  const deltas = new Array<number>(days).fill(0);
+  let base = 0;
+
+  const apply = (date: ISODate, delta: number) => {
+    if (delta === 0 || date > to) return;
+    if (date < from) base += delta;
+    else deltas[diffDays(from, date)] += delta;
+  };
+
+  for (const a of accounts) apply(a.initialBalanceDate, a.initialBalanceCents);
+  for (const tx of txs) {
+    let delta = 0;
+    if (tx.type === 'income') delta = ids.has(tx.accountId) ? tx.amountCents : 0;
+    else if (tx.type === 'expense') delta = ids.has(tx.accountId) ? -tx.amountCents : 0;
+    else {
+      if (ids.has(tx.accountId)) delta -= tx.amountCents;
+      if (tx.toAccountId && ids.has(tx.toAccountId)) delta += tx.amountCents;
+    }
+    apply(tx.date, delta);
+  }
+
+  const out: DailyPoint[] = [];
+  let running = base;
+  for (let i = 0; i < days; i++) {
+    running += deltas[i];
+    out.push({ date: addDays(from, i), cents: running });
+  }
+  return out;
 }
 
-export function liquidWealth(accounts: Iterable<{ isLiquid: boolean; balanceCents: number }>): number {
-  let total = 0;
-  for (const a of accounts) if (a.isLiquid) total += a.balanceCents;
-  return total;
+/** Number of movements touching each account (as source or destination). */
+export function movementCountByAccount(txs: Iterable<TxLike>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const tx of txs) {
+    out.set(tx.accountId, (out.get(tx.accountId) ?? 0) + 1);
+    if (tx.type === 'transfer' && tx.toAccountId && tx.toAccountId !== tx.accountId) {
+      out.set(tx.toAccountId, (out.get(tx.toAccountId) ?? 0) + 1);
+    }
+  }
+  return out;
 }
