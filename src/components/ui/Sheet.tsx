@@ -32,7 +32,12 @@ export function Sheet({
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // The field marked data-autofocus gets the focus (and keeps the keyboard that the tap opened).
+      const target = dialog.querySelector<HTMLElement>('[data-autofocus]');
+      if (target && document.activeElement !== target) target.focus({ preventScroll: true });
+    }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 

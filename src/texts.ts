@@ -128,6 +128,7 @@ export const T = {
     category: 'Categoria',
     account: 'Compte',
     dateRange: 'Rang de dates',
+    pickDate: 'Tria una data',
     from: 'Des de',
     to: 'Fins a',
     allTypes: 'Tots',

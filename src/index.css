@@ -83,71 +83,74 @@
   --content-bottom: calc(var(--nav-height) + var(--safe-bottom) + 88px);
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;
-  background: var(--color-page);
-  overflow-x: hidden;
-}
+/* Base styles live in the base layer so Tailwind utilities can override them. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    background: var(--color-page);
+    overflow-x: hidden;
+  }
 
-body {
-  margin: 0;
-  background: var(--color-page);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  min-height: 100dvh;
-  overflow-x: hidden;
-  overscroll-behavior-y: none;
-  -webkit-font-smoothing: antialiased;
-}
+  body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+  }
 
-/* No double-tap zoom anywhere. */
-html,
-body,
-button,
-a,
-label,
-input,
-select,
-textarea,
-[role='button'] {
-  touch-action: manipulation;
-}
+  /* No double-tap zoom anywhere. */
+  html,
+  body,
+  button,
+  a,
+  label,
+  input,
+  select,
+  textarea,
+  [role='button'] {
+    touch-action: manipulation;
+  }
 
-/* Inputs ≥ 16 px: iOS Safari doesn't zoom when focusing them. */
-input,
-select,
-textarea {
-  font-size: 16px;
-}
+  /* Inputs ≥ 16 px: iOS Safari doesn't zoom when focusing them. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 
-html:has(dialog[open]) {
-  overflow: hidden;
-}
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
 
-dialog::backdrop {
-  background: rgb(17 17 17 / 0.4);
-  animation: fade-in 0.18s ease-out;
-}
+  dialog::backdrop {
+    background: rgb(17 17 17 / 0.4);
+    animation: fade-in 0.18s ease-out;
+  }
 
-:focus-visible {
-  outline: 2px solid var(--color-transfer);
-  outline-offset: 2px;
-}
+  :focus-visible {
+    outline: 2px solid var(--color-transfer);
+    outline-offset: 2px;
+  }
 
-input[type='date'] {
-  -webkit-appearance: none;
-  appearance: none;
-  min-height: 48px;
-}
-input[type='date']::-webkit-date-and-time-value {
-  text-align: left;
-}
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 48px;
+  }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+  }
 
-select {
-  -webkit-appearance: none;
-  appearance: none;
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 @utility tabular {
