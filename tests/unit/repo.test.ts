@@ -78,3 +78,16 @@ describe('repository', () => {
     expect(await db.categories.count()).toBe(17);
   });
 });
+
+describe('budgets in the database', () => {
+  it('customising a month copies the default; resetting goes back to it', async () => {
+    await repo.saveBudget('default', 100000, { cat_oci: 5000, cat_compres: 0 });
+    expect((await db.budgets.where('month').equals('default').first())?.perCategory).toEqual({ cat_oci: 5000 });
+    await repo.customizeMonth('2026-10');
+    await repo.saveBudget('2026-10', 120000, { cat_oci: 9000 });
+    expect(await db.budgets.count()).toBe(2);
+    expect((await db.budgets.where('month').equals('default').first())?.totalCents).toBe(100000);
+    await repo.resetMonthToDefault('2026-10');
+    expect((await db.budgets.toArray()).map((x) => x.month)).toEqual(['default']);
+  });
+});

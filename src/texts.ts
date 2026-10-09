@@ -219,6 +219,7 @@ export const T = {
     taeRange: 'Introdueix una TAE entre 0 i 50.',
     withholdingRange: 'Introdueix un percentatge entre 0 i 100.',
     emojiRequired: 'Tria un emoji.',
+    amountInvalid: 'Introdueix un import vàlid.',
   },
 
   wealth: {
@@ -248,6 +249,7 @@ export const T = {
     resetConfirmTitle: 'Tornar al pressupost per defecte?',
     resetConfirmBody: (month: string) => `S'eliminarà el pressupost personalitzat de ${month}.`,
     total: 'Pressupost total mensual',
+    totalShort: 'Total mensual',
     perCategory: 'Per categoria',
     editHint: 'Deixa un camp buit si no hi vols pressupost.',
     near: 'A prop del límit',
@@ -262,6 +264,9 @@ export const T = {
     editingCustom: (month: string) => `Editant el pressupost de ${month}`,
     saved: 'Pressupost guardat',
     informative: 'El pressupost és només informatiu: no bloqueja cap despesa.',
+    spentOf: (spent: string, budget: string) => `${spent} / ${budget}`,
+    noBudget: 'Sense pressupost',
+    totalLine: 'Total del mes',
   },
 
   analysis: {
