@@ -71,7 +71,11 @@ describe('chart axes', () => {
     expect(domain[0]).toBeGreaterThan(0);
     expect(domain[0]).toBeLessThanOrEqual(500000);
     expect(domain[1]).toBeGreaterThanOrEqual(560000);
-    expect(ticks[0]).toBe(domain[0]);
+    expect(ticks.every((v) => v >= domain[0] && v <= domain[1])).toBe(true);
+    // From 2.000 € to 13.000 € the axis still doesn't start at 0 €.
+    const wide = fittedDomain(200000, 1300000);
+    expect(wide.domain[0]).toBeGreaterThan(0);
+    expect(wide.ticks[0]).toBeGreaterThan(0);
     // A flat line still gets a window around it.
     const flat = fittedDomain(100000, 100000);
     expect(flat.domain[0]).toBeLessThan(100000);

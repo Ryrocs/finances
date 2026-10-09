@@ -8,8 +8,8 @@ function niceStep(span: number, target: number): number {
 }
 
 /**
- * Y-axis fitted to the data (not anchored at 0), so variations are visible:
- * [min, max] padded a little and rounded outwards to nice ticks.
+ * Y-axis fitted to the data (never forced down to 0), so variations are visible: the domain is
+ * [min, max] padded a little, and the ticks are the round values that fall inside it.
  */
 export function fittedDomain(min: number, max: number, target = 4): { domain: [number, number]; ticks: number[] } {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return { domain: [0, 1], ticks: [0, 1] };
@@ -21,16 +21,16 @@ export function fittedDomain(min: number, max: number, target = 4): { domain: [n
     lo -= pad;
     hi += pad;
   } else {
-    const pad = (hi - lo) * 0.08;
+    const pad = (hi - lo) * 0.1;
     lo -= pad;
     hi += pad;
   }
+  // Don't cross 0 just because of the padding.
+  if (min >= 0 && lo < 0) lo = 0;
   const step = niceStep(hi - lo, target);
-  const start = Math.floor(lo / step) * step;
-  const end = Math.ceil(hi / step) * step;
   const ticks: number[] = [];
-  for (let v = start; v <= end + step / 2; v += step) ticks.push(Math.round(v));
-  return { domain: [start, end], ticks };
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(Math.round(v));
+  return { domain: [Math.floor(lo), Math.ceil(hi)], ticks };
 }
 
 /** Axis including 0 (bars must grow from a zero baseline). */

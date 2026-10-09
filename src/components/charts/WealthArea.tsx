@@ -3,7 +3,7 @@ import { fittedDomain } from '../../lib/chart-scale';
 import { diffDays, formatLongDate, MONTHS_SHORT, parseISODate } from '../../lib/dates';
 import type { DailyPoint } from '../../lib/finance/balances';
 import { T } from '../../texts';
-import { axisMoney, CHART, ChartTooltip } from './common';
+import { CHART, ChartTooltip, moneyTickFormatter } from './common';
 
 export function WealthArea({ points }: { points: DailyPoint[] }) {
   let min = Infinity;
@@ -52,11 +52,11 @@ export function WealthArea({ points }: { points: DailyPoint[] }) {
             domain={domain}
             ticks={ticks}
             allowDataOverflow
-            tickFormatter={axisMoney}
+            tickFormatter={moneyTickFormatter(ticks)}
             tick={CHART.tick}
             tickLine={false}
             axisLine={false}
-            width={52}
+            width={58}
           />
           <Tooltip
             content={<ChartTooltip labelFormatter={(d) => (d ? formatLongDate(d) : '')} />}

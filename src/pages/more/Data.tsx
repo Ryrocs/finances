@@ -168,7 +168,7 @@ export function DataPage() {
 
         <Card>
           <CardTitle subtitle={d.wipeBody}>{d.wipeTitle}</CardTitle>
-          <Button variant="secondary" block className="text-expense-ink" onClick={() => setWipeStep(1)} data-testid="wipe">
+          <Button variant="dangerSoft" block onClick={() => setWipeStep(1)} data-testid="wipe">
             {d.wipeTitle}
           </Button>
         </Card>

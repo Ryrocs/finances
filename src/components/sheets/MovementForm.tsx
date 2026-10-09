@@ -384,7 +384,7 @@ export function MovementForm({ mode, onClose }: { mode: FormMode; onClose: () =>
               error={errors.endDate}
               trailing={
                 endDate ? (
-                  <button type="button" onClick={() => setEndDate('')} className="h-8 rounded-lg px-2 text-[13px] font-semibold text-ink-2 active:bg-soft-2">
+                  <button type="button" onClick={() => setEndDate('')} className="-my-2 h-11 rounded-lg px-2 text-[13px] font-semibold text-ink-2 active:bg-soft-2">
                     {f.noEndDate}
                   </button>
                 ) : (

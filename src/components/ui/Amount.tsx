@@ -46,10 +46,9 @@ export function FitAmount({
   }, [full, minScale]);
 
   return (
-    <span ref={boxRef} className={cn('relative block min-w-0 overflow-hidden', className)} data-testid={testId} title={full}>
-      <span ref={measureRef} aria-hidden className="money invisible absolute left-0 top-0">
-        {full}
-      </span>
+    <span ref={boxRef} className={cn('relative block min-w-0 overflow-hidden', className)} data-testid={testId} data-fit title={full}>
+      {/* Measures the full text at the base size; drawn with ::before so it isn't part of the text content. */}
+      <span ref={measureRef} aria-hidden data-text={full} className="money invisible absolute left-0 top-0 before:content-[attr(data-text)]" />
       <span className="money inline-block" style={fit.scale < 1 ? { fontSize: `${fit.scale}em` } : undefined}>
         {text}
       </span>

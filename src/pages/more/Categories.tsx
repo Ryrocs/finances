@@ -108,7 +108,7 @@ function CategorySheet({ category, initialKind, onClose }: { category: Category 
         footer={
           <div className="flex gap-3">
             {category && (
-              <Button variant="secondary" block className="text-expense-ink" onClick={() => setConfirming(true)} data-testid="delete-category">
+              <Button variant="dangerSoft" block onClick={() => setConfirming(true)} data-testid="delete-category">
                 {T.common.delete}
               </Button>
             )}

@@ -4,7 +4,7 @@ import { formatMonthShort, formatMonthYear } from '../../lib/dates';
 import type { MonthFlow } from '../../lib/finance/cashflow';
 import { formatPercent } from '../../lib/money';
 import { T } from '../../texts';
-import { axisMoney, CHART, ChartTooltip, Legend } from './common';
+import { CHART, ChartTooltip, Legend, moneyTickFormatter } from './common';
 
 const HEIGHT = 210;
 const monthTick = (m: string) => formatMonthShort(m, false);
@@ -42,7 +42,7 @@ export function IncomeExpenseBars({ data }: { data: MonthFlow[] }) {
         <BarChart data={data} margin={margin} barGap={2} barCategoryGap="22%">
           <CartesianGrid vertical={false} stroke={CHART.grid} />
           {xAxis}
-          <YAxis domain={domain} ticks={ticks} tickFormatter={axisMoney} tick={CHART.tick} tickLine={false} axisLine={false} width={50} />
+          <YAxis domain={domain} ticks={ticks} tickFormatter={moneyTickFormatter(ticks)} tick={CHART.tick} tickLine={false} axisLine={false} width={50} />
           <Tooltip content={<ChartTooltip labelFormatter={monthLabel} />} cursor={{ fill: '#f3f4f6' }} />
           <Bar dataKey="incomeCents" name={T.common.income} fill={CHART.income} radius={[4, 4, 0, 0]} maxBarSize={18} isAnimationActive={false} />
           <Bar dataKey="expenseCents" name={T.common.expenses} fill={CHART.expense} radius={[4, 4, 0, 0]} maxBarSize={18} isAnimationActive={false} />
@@ -60,7 +60,7 @@ export function ExpenseLine({ data }: { data: MonthFlow[] }) {
       <LineChart data={data} margin={margin}>
         <CartesianGrid vertical={false} stroke={CHART.grid} />
         {lineXAxis}
-        <YAxis domain={domain} ticks={ticks} tickFormatter={axisMoney} tick={CHART.tick} tickLine={false} axisLine={false} width={50} allowDataOverflow />
+        <YAxis domain={domain} ticks={ticks} tickFormatter={moneyTickFormatter(ticks)} tick={CHART.tick} tickLine={false} axisLine={false} width={50} allowDataOverflow />
         <Tooltip content={<ChartTooltip labelFormatter={monthLabel} />} cursor={{ stroke: CHART.axis, strokeWidth: 1 }} />
         <Line
           type="linear"
@@ -85,7 +85,7 @@ export function BalanceBars({ data }: { data: MonthFlow[] }) {
       <BarChart data={data} margin={margin} barCategoryGap="30%">
         <CartesianGrid vertical={false} stroke={CHART.grid} />
         {xAxis}
-        <YAxis domain={domain} ticks={ticks} tickFormatter={axisMoney} tick={CHART.tick} tickLine={false} axisLine={false} width={50} />
+        <YAxis domain={domain} ticks={ticks} tickFormatter={moneyTickFormatter(ticks)} tick={CHART.tick} tickLine={false} axisLine={false} width={50} />
         <ReferenceLine y={0} stroke={CHART.axis} />
         <Tooltip content={<ChartTooltip labelFormatter={monthLabel} />} cursor={{ fill: '#f3f4f6' }} />
         <Bar dataKey="balanceCents" name={T.dashboard.balance} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>

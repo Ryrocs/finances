@@ -34,7 +34,7 @@ export function MovementDetail({ tx, onClose, onEdit }: { tx: Transaction; onClo
         testId="movement-detail"
         footer={
           <div className="flex gap-3">
-            <Button variant="secondary" block className="text-expense-ink" onClick={() => setConfirming(true)}>
+            <Button variant="dangerSoft" block onClick={() => setConfirming(true)}>
               {T.common.delete}
             </Button>
             <Button block onClick={() => onEdit(current)}>

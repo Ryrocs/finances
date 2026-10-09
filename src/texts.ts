@@ -84,6 +84,7 @@ export const T = {
     ],
     privacy: "Les dades es guarden només en aquest dispositiu: no hi ha comptes d'usuari ni núvol.",
     start: 'Començar',
+    restore: 'Restaurar una còpia de seguretat',
     accountsTitle: 'Els teus comptes',
     accountsBody: 'Indica el saldo que té cada compte en una data. Ho pots canviar tot més endavant.',
     suggested: ['Compte corrent', 'Compte remunerat', 'Efectiu'],
@@ -124,6 +125,7 @@ export const T = {
   movements: {
     title: 'Moviments',
     search: 'Cerca per descripció o notes',
+    searchPlaceholder: 'Cerca',
     clearSearch: 'Esborrar la cerca',
     filters: 'Filtres',
     type: 'Tipus',

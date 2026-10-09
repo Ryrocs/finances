@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { CategoryIcon } from '../components/CategoryIcon';
-import { Donut, foldSlices } from '../components/charts/Donut';
+import { foldSlices } from '../components/charts/slices';
 import { MonthSelector } from '../components/MonthSelector';
 import { PageHeader } from '../components/PageHeader';
 import { FitAmount } from '../components/ui/Amount';
@@ -19,6 +19,9 @@ import { useStore } from '../state/data';
 import { T } from '../texts';
 
 const t = T.dashboard;
+
+// Charts load on demand so the first screen (and the add-movement sheet) start faster.
+const Donut = lazy(() => import('../components/charts/Donut').then((m) => ({ default: m.Donut })));
 
 export function DashboardPage() {
   const store = useStore();
@@ -98,7 +101,8 @@ export function DashboardPage() {
             )
           ) : (
             <>
-              <Donut
+              <Suspense fallback={<div className="mx-auto h-[200px] w-[200px]" />}>
+                <Donut
                 centerLabel={t.expenses}
                 centerValue={totals.expenseCents}
                 slices={foldSlices(
@@ -109,7 +113,8 @@ export function DashboardPage() {
                   6,
                   t.restSlice,
                 )}
-              />
+                />
+              </Suspense>
               <ul className="-mx-2 mt-4" data-testid="category-list">
                 {data.byCategory.map((c) => {
                   const cat = store.categoryById.get(c.categoryId);
@@ -164,7 +169,7 @@ function PaceCard({ pace }: { pace: Pace }) {
           </div>
         </div>
       )}
-      <dl className={cn('grid gap-2', used !== null ? 'grid-cols-3' : 'grid-cols-2')}>
+      <dl className={cn('grid items-end gap-2', used !== null ? 'grid-cols-3' : 'grid-cols-2')}>
         <Metric label={t.paceSpent}>
           <FitAmount cents={pace.spentCents} testId="pace-spent" />
         </Metric>
@@ -186,7 +191,7 @@ function PaceCard({ pace }: { pace: Pace }) {
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-[12px] text-ink-3">{label}</dt>
+      <dt className="text-[12px] leading-tight text-ink-3">{label}</dt>
       <dd className="money text-[15px] font-semibold">{children}</dd>
     </div>
   );

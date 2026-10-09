@@ -139,7 +139,7 @@ function RuleActions({ rule: initial, onClose }: { rule: RecurringRule; onClose:
             {rule.active ? <Pause className="h-4 w-4" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}
             {rule.active ? r.pause : r.resume}
           </Button>
-          <Button variant="outline" block className="text-expense-ink" onClick={() => setConfirming(true)}>
+          <Button variant="dangerOutline" block onClick={() => setConfirming(true)}>
             <Trash2 className="h-4 w-4" aria-hidden />
             {T.common.delete}
           </Button>

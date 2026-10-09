@@ -1,12 +1,14 @@
 import { Plus, ShieldCheck, Wallet, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AccountFields, checkDraft, type AccountDraft } from '../components/forms/AccountFields';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useToast } from '../components/ui/Toast';
 import { runAutomation } from '../db/automation';
-import { createAccounts, setSetting } from '../db/repo';
+import { createAccounts, restoreBackup, setSetting } from '../db/repo';
 import { PALETTE } from '../db/seed';
+import { validateBackup } from '../lib/backup';
 import type { AccountField, FieldErrors } from '../lib/validation';
 import { useAppState } from '../state/app';
 import { T } from '../texts';
@@ -40,12 +42,46 @@ function Layout({ children, footer }: { children: React.ReactNode; footer: React
 }
 
 function Welcome({ onNext }: { onNext: () => void }) {
+  const { today } = useAppState();
+  const toast = useToast();
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // A new phone, or after wiping everything: start from a backup instead of from scratch.
+  const restore = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const result = validateBackup(JSON.parse(await file.text()));
+      if (!result.ok) throw new Error(result.reason);
+      await restoreBackup(result.backup);
+      await runAutomation(today);
+      toast(T.data.restored);
+    } catch (e) {
+      console.warn(e);
+      toast(T.data.invalidBackup, 'error');
+    } finally {
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
   return (
     <Layout
       footer={
-        <Button block size="lg" onClick={onNext}>
-          {t.start}
-        </Button>
+        <div className="space-y-2">
+          <Button block size="lg" onClick={onNext}>
+            {t.start}
+          </Button>
+          <Button block variant="ghost" onClick={() => fileInput.current?.click()} data-testid="onboarding-restore">
+            {t.restore}
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            data-testid="onboarding-restore-file"
+            onChange={(e) => void restore(e.target.files?.[0])}
+          />
+        </div>
       }
     >
       <div className="flex flex-col pt-[8vh]">

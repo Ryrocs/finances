@@ -37,7 +37,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               'min-w-0 flex-1 truncate rounded-xl px-1 font-semibold transition-colors',
-              size === 'md' ? 'h-11 text-[15px] max-[400px]:text-[14px] max-[400px]:tracking-tight' : 'h-9 text-[13px]',
+              size === 'md' ? 'h-11 text-[15px] max-[400px]:text-[14px] max-[400px]:tracking-tight' : 'h-11 text-[13px]',
               active ? (o.activeClass ?? 'bg-surface text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)]') : 'text-ink-3 active:bg-soft-2',
             )}
           >

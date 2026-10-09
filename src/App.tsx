@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { Shell } from './components/Shell';
 import { ToastProvider } from './components/ui/Toast';
 import { runAutomation } from './db/automation';
 import { ensureSeed } from './db/repo';
 import { today } from './lib/dates';
-import { AnalysisPage } from './pages/Analysis';
 import { DashboardPage } from './pages/Dashboard';
 import { AccountsPage } from './pages/more/Accounts';
 import { BudgetPage } from './pages/more/Budget';
@@ -15,11 +14,14 @@ import { RecurringPage } from './pages/more/Recurring';
 import { MorePage } from './pages/More';
 import { MovementsPage } from './pages/Movements';
 import { OnboardingPage } from './pages/Onboarding';
-import { WealthPage } from './pages/Wealth';
 import { requestPersistentStorage } from './pwa';
 import { AppStateProvider } from './state/app';
 import { DataProvider, useStore } from './state/data';
 import { T } from './texts';
+
+// The chart-heavy screens load on demand (they are precached for offline use anyway).
+const AnalysisPage = lazy(() => import('./pages/Analysis').then((m) => ({ default: m.AnalysisPage })));
+const WealthPage = lazy(() => import('./pages/Wealth').then((m) => ({ default: m.WealthPage })));
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -66,8 +68,22 @@ function Root() {
       <Route element={<Shell />}>
         <Route index element={<DashboardPage />} />
         <Route path="moviments" element={<MovementsPage />} />
-        <Route path="analisi" element={<AnalysisPage />} />
-        <Route path="patrimoni" element={<WealthPage />} />
+        <Route
+          path="analisi"
+          element={
+            <Suspense fallback={null}>
+              <AnalysisPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="patrimoni"
+          element={
+            <Suspense fallback={null}>
+              <WealthPage />
+            </Suspense>
+          }
+        />
         <Route path="mes" element={<MorePage />} />
         <Route path="mes/pressupost" element={<BudgetPage />} />
         <Route path="mes/comptes" element={<AccountsPage />} />

@@ -6,6 +6,7 @@ import { MovementRow } from '../components/MovementRow';
 import { PageHeader } from '../components/PageHeader';
 import { DateField } from '../components/forms/DateField';
 import { useSheets } from '../components/sheets/SheetsProvider';
+import { FitAmount } from '../components/ui/Amount';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { cn } from '../components/ui/cn';
@@ -16,7 +17,6 @@ import { Sheet } from '../components/ui/Sheet';
 import { formatDayHeader, formatShortDate, type ISODate } from '../lib/dates';
 import { filterMovements, type MovementFilters } from '../lib/filters';
 import { flowTotals } from '../lib/finance/cashflow';
-import { formatEUR } from '../lib/money';
 import type { Transaction, TransactionType } from '../lib/types';
 import { useAppState } from '../state/app';
 import { useStore } from '../state/data';
@@ -102,7 +102,8 @@ export function MovementsPage() {
               type="search"
               value={filters.query ?? ''}
               onChange={(e) => setFilters({ ...filters, query: e.target.value || undefined })}
-              placeholder={m.search}
+              placeholder={m.searchPlaceholder}
+              aria-label={m.search}
               enterKeyHint="search"
               className="h-12 w-full min-w-0 rounded-xl border border-line-strong bg-surface pl-11 pr-10 text-[16px] outline-none placeholder:text-ink-4 focus:border-ink-3 [&::-webkit-search-cancel-button]:hidden"
             />
@@ -111,7 +112,7 @@ export function MovementsPage() {
                 type="button"
                 aria-label={m.clearSearch}
                 onClick={() => setFilters({ ...filters, query: undefined })}
-                className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-3"
+                className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-3"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
@@ -140,7 +141,7 @@ export function MovementsPage() {
                 type="button"
                 onClick={() => setFilters(chip.key === 'range' ? { ...filters, from: undefined, to: undefined } : { ...filters, [chip.key]: undefined })}
                 aria-label={m.removeFilter(chip.label)}
-                className="inline-flex h-9 max-w-full items-center gap-1.5 rounded-full bg-soft-2 pl-3 pr-2 text-[14px] font-medium text-ink"
+                className="inline-flex h-11 max-w-full items-center gap-1.5 rounded-full bg-soft-2 pl-3.5 pr-2.5 text-[14px] font-medium text-ink"
               >
                 <span className="truncate">{chip.label}</span>
                 <X className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
@@ -152,15 +153,11 @@ export function MovementsPage() {
         <div className="grid grid-cols-2 gap-3" data-testid="movements-summary">
           <Card className="px-4 py-3">
             <p className="text-[13px] text-ink-3">{T.common.income}</p>
-            <p className="money truncate text-[18px] font-bold text-income-ink" data-testid="summary-income">
-              {formatEUR(totals.incomeCents, { signed: true })}
-            </p>
+            <FitAmount cents={totals.incomeCents} options={{ signed: true }} className="text-[18px] font-bold text-income-ink" testId="summary-income" />
           </Card>
           <Card className="px-4 py-3">
             <p className="text-[13px] text-ink-3">{T.common.expenses}</p>
-            <p className="money truncate text-[18px] font-bold text-expense-ink" data-testid="summary-expenses">
-              {formatEUR(-totals.expenseCents)}
-            </p>
+            <FitAmount cents={-totals.expenseCents} className="text-[18px] font-bold text-expense-ink" testId="summary-expenses" />
           </Card>
         </div>
 

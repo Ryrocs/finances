@@ -12,7 +12,12 @@ export const CHART = {
   tick: { fill: '#8a8a94', fontSize: 11 },
 } as const;
 
-export const axisMoney = (cents: number) => formatEURCompact(cents);
+/** Compact labels ("1,5k €") unless two ticks would read the same; then whole euros ("1.250 €"). */
+export function moneyTickFormatter(ticks: readonly number[]): (cents: number) => string {
+  const compact = ticks.map(formatEURCompact);
+  if (new Set(compact).size === compact.length) return formatEURCompact;
+  return (cents: number) => formatEUR(cents, { whole: true });
+}
 
 interface TooltipRow {
   name?: string | number;

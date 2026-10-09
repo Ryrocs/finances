@@ -131,7 +131,7 @@ function AccountSheet({ account, onClose }: { account: Account | null; onClose: 
         footer={
           <div className="flex gap-3">
             {account && (
-              <Button variant="secondary" block className="text-expense-ink" onClick={() => setConfirmDelete(true)} data-testid="delete-account">
+              <Button variant="dangerSoft" block onClick={() => setConfirmDelete(true)} data-testid="delete-account">
                 {T.common.delete}
               </Button>
             )}
