@@ -117,6 +117,8 @@ export const T = {
     paceText: (amount: string) => `Al ritme actual acabaràs gastant aproximadament ${amount} aquest mes.`,
     byCategory: 'Despeses per categoria',
     noExpenses: 'Encara no hi ha despeses aquest mes',
+    restSlice: 'Resta de categories',
+    seeMovements: (name: string) => `Veure els moviments de ${name}`,
   },
 
   movements: {

@@ -17,17 +17,17 @@ export const CATEGORY_IDS = {
 } as const;
 
 export const DEFAULT_CATEGORIES: SeedCategory[] = [
-  { id: 'cat_habitatge', name: 'Habitatge', emoji: '🏠', color: '#6366F1', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_alimentacio', name: 'Alimentació', emoji: '🛒', color: '#22C55E', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_transport', name: 'Transport', emoji: '🚇', color: '#0EA5E9', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_subscripcions', name: 'Subscripcions', emoji: '📱', color: '#8B5CF6', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_salut', name: 'Salut', emoji: '💊', color: '#EC4899', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_estudis', name: 'Estudis', emoji: '📚', color: '#14B8A6', kind: 'expense', group: 'necessitats' },
-  { id: 'cat_restauracio', name: 'Restauració', emoji: '🍔', color: '#F97316', kind: 'expense', group: 'oci' },
-  { id: 'cat_oci', name: 'Oci', emoji: '🎉', color: '#F59E0B', kind: 'expense', group: 'oci' },
-  { id: 'cat_compres', name: 'Compres', emoji: '🛍️', color: '#F43F5E', kind: 'expense', group: 'oci' },
-  { id: 'cat_viatges', name: 'Viatges', emoji: '✈️', color: '#06B6D4', kind: 'expense', group: 'oci' },
-  { id: 'cat_entreteniment', name: 'Entreteniment', emoji: '🎮', color: '#A855F7', kind: 'expense', group: 'oci' },
+  { id: 'cat_habitatge', name: 'Habitatge', emoji: '🏠', color: '#2A78D6', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_alimentacio', name: 'Alimentació', emoji: '🛒', color: '#EB6834', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_transport', name: 'Transport', emoji: '🚇', color: '#EDA100', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_subscripcions', name: 'Subscripcions', emoji: '📱', color: '#4A3AA7', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_salut', name: 'Salut', emoji: '💊', color: '#0EA5E9', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_estudis', name: 'Estudis', emoji: '📚', color: '#8B5CF6', kind: 'expense', group: 'necessitats' },
+  { id: 'cat_restauracio', name: 'Restauració', emoji: '🍔', color: '#1BAF7A', kind: 'expense', group: 'oci' },
+  { id: 'cat_oci', name: 'Oci', emoji: '🎉', color: '#008300', kind: 'expense', group: 'oci' },
+  { id: 'cat_compres', name: 'Compres', emoji: '🛍️', color: '#E87BA4', kind: 'expense', group: 'oci' },
+  { id: 'cat_viatges', name: 'Viatges', emoji: '✈️', color: '#E34948', kind: 'expense', group: 'oci' },
+  { id: 'cat_entreteniment', name: 'Entreteniment', emoji: '🎮', color: '#A16207', kind: 'expense', group: 'oci' },
   { id: CATEGORY_IDS.otherExpense, name: 'Altres', emoji: '🏷️', color: '#94A3B8', kind: 'expense', group: 'altres' },
   { id: 'cat_feina', name: 'Feina', emoji: '💼', color: '#10B981', kind: 'income' },
   { id: 'cat_pensio', name: 'Pensió', emoji: '👴', color: '#0EA5E9', kind: 'income' },
@@ -40,18 +40,21 @@ export function defaultCategories(now = Date.now()): Category[] {
   return DEFAULT_CATEGORIES.map((c, index) => ({ ...c, order: index, createdAt: now }));
 }
 
-/** Palette offered for accounts and categories. */
+/**
+ * Palette offered for accounts and categories. The first eight follow a colour-blind-checked
+ * categorical order (adjacent hues stay distinguishable in charts).
+ */
 export const PALETTE = [
-  '#6366F1',
-  '#10B981',
-  '#F59E0B',
+  '#2A78D6',
+  '#EB6834',
+  '#1BAF7A',
+  '#EDA100',
+  '#E87BA4',
+  '#008300',
+  '#4A3AA7',
+  '#E34948',
   '#0EA5E9',
-  '#F43F5E',
   '#8B5CF6',
-  '#14B8A6',
-  '#F97316',
-  '#EC4899',
-  '#22C55E',
-  '#06B6D4',
+  '#A16207',
   '#64748B',
 ];
