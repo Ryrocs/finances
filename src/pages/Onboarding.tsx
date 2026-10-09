@@ -1,7 +1,8 @@
 import { Plus, ShieldCheck, Wallet, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { AccountFields, checkDraft, type AccountDraft } from '../components/forms/AccountFields';
+import { ACCOUNT_TYPES, AccountFields, checkDraft, type AccountDraft } from '../components/forms/AccountFields';
+import { chipClass } from '../components/sheets/Chips';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../components/ui/Toast';
@@ -9,18 +10,42 @@ import { runAutomation } from '../db/automation';
 import { createAccounts, restoreBackup, setSetting } from '../db/repo';
 import { PALETTE } from '../db/seed';
 import { validateBackup } from '../lib/backup';
+import { formatEUR, parseAmount } from '../lib/money';
+import type { AccountType } from '../lib/types';
 import type { AccountField, FieldErrors } from '../lib/validation';
 import { useAppState } from '../state/app';
 import { T } from '../texts';
 
 const t = T.onboarding;
 
-function suggestedDrafts(today: string): AccountDraft[] {
+type Draft = AccountDraft & { key: number };
+
+let nextKey = 0;
+
+function newDraft(name: string, type: AccountType, color: string, today: string): Draft {
+  return { key: nextKey++, name, type, color, balance: '', date: today, tae: '', withholding: '19' };
+}
+
+function suggestedDrafts(today: string): Draft[] {
   return [
-    { name: t.suggested[0], type: 'corrent', color: PALETTE[0], balance: '', date: today, tae: '', withholding: '19' },
-    { name: t.suggested[1], type: 'remunerat', color: PALETTE[1], balance: '', date: today, tae: '', withholding: '19' },
-    { name: t.suggested[2], type: 'efectiu', color: PALETTE[2], balance: '', date: today, tae: '', withholding: '19' },
+    newDraft(t.suggested[0], 'corrent', PALETTE[0], today),
+    newDraft(t.suggested[1], 'remunerat', PALETTE[1], today),
+    newDraft(t.suggested[2], 'efectiu', PALETTE[2], today),
   ];
+}
+
+/** "Compte remunerat", then "Compte remunerat 2", "Compte remunerat 3"… */
+function uniqueName(base: string, taken: readonly string[]): string {
+  const names = new Set(taken.map((n) => n.trim().toLowerCase()));
+  if (!names.has(base.toLowerCase())) return base;
+  for (let i = 2; ; i++) if (!names.has(`${base} ${i}`.toLowerCase())) return `${base} ${i}`;
+}
+
+/** Sum of the balances typed so far (ignoring the ones that aren't valid amounts yet). */
+function draftsTotal(drafts: readonly AccountDraft[]): number {
+  let total = 0;
+  for (const d of drafts) total += d.balance.trim() === '' ? 0 : (parseAmount(d.balance) ?? 0);
+  return total;
 }
 
 export function OnboardingPage() {
@@ -108,7 +133,29 @@ function Welcome({ onNext }: { onNext: () => void }) {
 function AccountsStep() {
   const { today } = useAppState();
   const navigate = useNavigate();
-  const [drafts, setDrafts] = useState<AccountDraft[]>(() => suggestedDrafts(today));
+  const [drafts, setDrafts] = useState<Draft[]>(() => suggestedDrafts(today));
+  const [scrollTo, setScrollTo] = useState<number | null>(null);
+  const cardRefs = useRef(new Map<number, HTMLDivElement>());
+
+  // Bring a just-added account into view so its name and balance can be typed straight away.
+  useEffect(() => {
+    if (scrollTo === null) return;
+    cardRefs.current.get(scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setScrollTo(null);
+  }, [scrollTo]);
+
+  const addDraft = (type: AccountType) => {
+    setFormError(null);
+    const draft = newDraft(
+      uniqueName(t.defaultNames[type], drafts.map((d) => d.name)),
+      type,
+      PALETTE[drafts.length % PALETTE.length],
+      today,
+    );
+    setDrafts((list) => [...list, draft]);
+    setErrors((list) => [...list, {}]);
+    setScrollTo(draft.key);
+  };
   const [errors, setErrors] = useState<FieldErrors<AccountField>[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -149,6 +196,14 @@ function AccountsStep() {
               {formError}
             </p>
           )}
+          {drafts.length > 0 && (
+            <div className="mb-3 flex items-baseline justify-between gap-3" data-testid="onboarding-total">
+              <span className="min-w-0 text-[14px] text-ink-2">
+                {t.total} · {t.accountsCount(drafts.length)}
+              </span>
+              <span className="money shrink-0 text-[18px] font-bold">{formatEUR(draftsTotal(drafts))}</span>
+            </div>
+          )}
           <Button block size="lg" onClick={submit} disabled={busy || drafts.length === 0} data-testid="onboarding-finish">
             {t.finish}
           </Button>
@@ -160,7 +215,15 @@ function AccountsStep() {
 
       <div className="mt-5 space-y-3">
         {drafts.map((draft, i) => (
-          <Card key={i} data-testid="onboarding-account">
+          <Card
+            key={draft.key}
+            data-testid="onboarding-account"
+            className="scroll-mt-4"
+            ref={(el: HTMLDivElement | null) => {
+              if (el) cardRefs.current.set(draft.key, el);
+              else cardRefs.current.delete(draft.key);
+            }}
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: draft.color }} aria-hidden />
@@ -190,21 +253,25 @@ function AccountsStep() {
         </div>
       )}
 
-      <Button
-        variant="outline"
-        block
-        className="mt-3"
-        onClick={() => {
-          setFormError(null);
-          setDrafts((list) => [
-            ...list,
-            { name: '', type: 'corrent', color: PALETTE[list.length % PALETTE.length], balance: '', date: today, tae: '', withholding: '19' },
-          ]);
-        }}
-      >
-        <Plus className="h-5 w-5" aria-hidden />
-        {t.addAccount}
-      </Button>
+      <div className="mt-5">
+        <p className="text-[15px] font-semibold">{t.addAccount}</p>
+        <p className="mb-3 mt-0.5 text-[13px] leading-snug text-ink-3">{t.addAccountHint}</p>
+        <div className="flex flex-wrap gap-2">
+          {ACCOUNT_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={chipClass(false)}
+              onClick={() => addDraft(type)}
+              aria-label={t.addOfType(T.accountTypes[type])}
+              data-testid={`onboarding-add-${type}`}
+            >
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+              {T.accountTypes[type]}
+            </button>
+          ))}
+        </div>
+      </div>
     </Layout>
   );
 }

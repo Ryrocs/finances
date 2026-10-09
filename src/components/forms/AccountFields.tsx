@@ -4,7 +4,8 @@ import type { Account, AccountType } from '../../lib/types';
 import { parsePercent, validateAccount, type AccountField, type AccountInput, type FieldErrors } from '../../lib/validation';
 import { T } from '../../texts';
 import { ColorPicker } from '../ui/ColorPicker';
-import { Field, Select, TextInput, useFieldId } from '../ui/Field';
+import { Chip, ChipGroup } from '../sheets/Chips';
+import { Field, TextInput, useFieldId } from '../ui/Field';
 import { DateField } from './DateField';
 
 export interface AccountDraft {
@@ -77,7 +78,6 @@ export function AccountFields({
   showColor?: boolean;
 }) {
   const nameId = useFieldId('account-name');
-  const typeId = useFieldId('account-type');
   const balanceId = useFieldId('account-balance');
   const taeId = useFieldId('account-tae');
   const whId = useFieldId('account-withholding');
@@ -94,16 +94,16 @@ export function AccountFields({
           invalid={!!errors.name}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t.type} htmlFor={typeId}>
-          <Select id={typeId} value={draft.type} onChange={(e) => onChange({ type: e.target.value as AccountType })}>
-            {ACCOUNT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {T.accountTypes[type]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <Field label={t.type}>
+        <ChipGroup label={t.type}>
+          {ACCOUNT_TYPES.map((type) => (
+            <Chip key={type} selected={draft.type === type} onClick={() => onChange({ type })} testId={`account-type-${type}`}>
+              {T.accountTypes[type]}
+            </Chip>
+          ))}
+        </ChipGroup>
+      </Field>
+      <div className="grid grid-cols-2 items-end gap-3">
         <Field label={t.initialBalance} htmlFor={balanceId} error={errors.initialBalance}>
           <div className="relative">
             <TextInput
@@ -119,8 +119,8 @@ export function AccountFields({
             <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3">€</span>
           </div>
         </Field>
+        <DateField label={t.initialBalanceDate} value={draft.date} onChange={(date) => onChange({ date })} error={errors.initialBalanceDate} today={today} shortcuts={false} />
       </div>
-      <DateField label={t.initialBalanceDate} value={draft.date} onChange={(date) => onChange({ date })} error={errors.initialBalanceDate} today={today} />
       {draft.type === 'remunerat' && (
         <>
           <div className="grid grid-cols-2 gap-3">

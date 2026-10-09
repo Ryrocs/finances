@@ -14,7 +14,7 @@ Decisions tècniques: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 | Pantalla | Què fa |
 | --- | --- |
-| Onboarding | Benvinguda i creació dels comptes (corrent, remunerat, efectiu… amb saldo i data inicial, TAE i retenció). També permet restaurar una còpia. |
+| Onboarding | Benvinguda i creació dels comptes amb saldo i data inicial: tants com calgui de cada tipus (per exemple, dos comptes remunerats amb TAE diferents), amb el total del patrimoni inicial. També permet restaurar una còpia. |
 | Resum | Ingressos, despeses, balanç (superàvit/dèficit i taxa d'estalvi), patrimoni líquid, ritme de despesa amb projecció i despeses per categoria (donut + llista que porta a Moviments). |
 | Moviments | Llista per dies, cercador, filtres (tipus, categoria, compte, rang de dates), detall amb editar i eliminar. |
 | Afegir moviment | Full inferior: import enfocat amb teclat numèric → categoria (per freqüència d'ús) → Guardar. Despesa, ingrés o transferència; pagament únic o recurrent. |

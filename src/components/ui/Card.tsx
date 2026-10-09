@@ -1,7 +1,7 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from './cn';
 
-export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
+export function Card({ className, ...rest }: ComponentProps<'div'>) {
   return <div className={cn('min-w-0 rounded-card border border-line bg-surface p-4', className)} {...rest} />;
 }
 

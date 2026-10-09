@@ -34,7 +34,7 @@ test('full journey: onboarding, movements, balances, interest, recurring, budget
   await page.getByTestId('new-account').click();
   const sheet = page.getByTestId('account-sheet');
   await sheet.getByLabel('Nom', { exact: true }).fill('Compte remunerat');
-  await sheet.getByLabel('Tipus', { exact: true }).selectOption('remunerat');
+  await sheet.getByTestId('account-type-remunerat').click();
   await sheet.getByLabel('Saldo inicial', { exact: true }).fill('10000');
   await sheet.getByLabel('Data del saldo inicial', { exact: true }).fill('2026-08-09');
   await sheet.getByLabel('TAE (%)', { exact: true }).fill('2,5');
