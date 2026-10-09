@@ -9,6 +9,13 @@ export function ChipGroup({ label, children, invalid }: { label: string; childre
   );
 }
 
+export function chipClass(selected: boolean): string {
+  return cn(
+    'inline-flex h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full border px-3.5 text-[15px] font-medium transition-colors disabled:opacity-40',
+    selected ? 'border-primary bg-primary text-white' : 'border-line-strong bg-surface text-ink active:bg-soft',
+  );
+}
+
 export function Chip({
   selected,
   onClick,
@@ -30,10 +37,7 @@ export function Chip({
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
-      className={cn(
-        'inline-flex h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full border px-3.5 text-[15px] font-medium transition-colors disabled:opacity-40',
-        selected ? 'border-primary bg-primary text-white' : 'border-line-strong bg-surface text-ink active:bg-soft',
-      )}
+      className={chipClass(selected)}
     >
       {children}
     </button>

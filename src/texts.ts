@@ -328,7 +328,6 @@ export const T = {
     deleteWithMovements: (n: number) =>
       `Aquest compte té ${n} ${plural(n, 'moviment', 'moviments')}. Si l'elimines, també s'eliminaran, incloses les transferències amb altres comptes, i el patrimoni canviarà.`,
     deleteAcknowledge: (n: number) => `Entenc que s'eliminaran ${n} ${plural(n, 'moviment', 'moviments')}`,
-    deleteConfirm: 'Eliminar el compte',
     lastAccount: 'Ha de quedar com a mínim un compte.',
     empty: 'Encara no hi ha comptes',
     namePlaceholder: 'Ex.: Compte corrent',

@@ -337,10 +337,13 @@ export async function readAllData(): Promise<BackupData> {
   return { accounts, categories, transactions, recurringRules, budgets, settings };
 }
 
-/** Builds the backup file and remembers when it was made. */
+/** Builds the backup file. Call `markBackupDone` once the user has actually saved it. */
 export async function exportBackup(now = new Date()): Promise<BackupFile> {
-  await setSetting('lastBackupAt', now.getTime());
   return buildBackup(await readAllData(), now);
+}
+
+export async function markBackupDone(now = new Date()) {
+  await setSetting('lastBackupAt', now.getTime());
 }
 
 /** Replaces every table with the content of a validated backup, atomically. */

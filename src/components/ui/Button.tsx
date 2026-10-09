@@ -23,7 +23,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl font-semibold transition-colors disabled:cursor-not-allowed',
+        'inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl font-semibold transition-colors disabled:cursor-not-allowed',
         size === 'sm' && 'h-11 px-4 text-[15px]',
         size === 'md' && 'h-12 px-5 text-[16px]',
         size === 'lg' && 'h-14 px-6 text-[17px]',

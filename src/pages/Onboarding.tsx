@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { AccountFields, checkDraft, type AccountDraft } from '../components/forms/AccountFields';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { runAutomation } from '../db/automation';
 import { createAccounts, setSetting } from '../db/repo';
 import { PALETTE } from '../db/seed';
 import type { AccountField, FieldErrors } from '../lib/validation';
@@ -93,6 +94,7 @@ function AccountsStep() {
     try {
       const ids = await createAccounts(checks.map((c) => c.data!));
       await setSetting('lastAccountId', ids[0]);
+      await runAutomation(today);
       await setSetting('onboardingDone', true);
       navigate('/', { replace: true });
     } catch (e) {
