@@ -3,6 +3,8 @@ import { cn } from './cn';
 export interface SegmentOption<T extends string> {
   value: T;
   label: string;
+  /** Full name for screen readers when `label` is abbreviated. */
+  ariaLabel?: string;
   /** Tailwind classes applied when this option is active (e.g. a semantic colour). */
   activeClass?: string;
 }
@@ -30,6 +32,8 @@ export function Segmented<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
+            aria-label={o.ariaLabel}
+            title={o.ariaLabel}
             onClick={() => onChange(o.value)}
             className={cn(
               'min-w-0 flex-1 truncate rounded-xl px-1 font-semibold transition-colors',
