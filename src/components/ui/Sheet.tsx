@@ -1,13 +1,12 @@
-'use client';
-
 import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { useI18n } from '@/components/providers/I18nProvider';
+import { T } from '../../texts';
 import { cn } from './cn';
 
 /**
- * Bottom sheet on phones, centred dialog from `sm` up. Built on native <dialog> (focus trap,
- * Escape, top layer). It follows the visual viewport so the footer stays above the keyboard.
+ * Bottom sheet built on the native <dialog> (top layer: always above the tab bar and the floating
+ * button; focus trap and Escape for free). The footer — where "Guardar" lives — is outside the
+ * scrolling area, padded for the iPhone home indicator and lifted above the on-screen keyboard.
  */
 export function Sheet({
   open,
@@ -15,31 +14,37 @@ export function Sheet({
   title,
   children,
   footer,
-  size = 'md',
-  labelledBy,
+  header,
+  testId,
 }: {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'md' | 'lg';
-  labelledBy?: string;
+  /** Extra content pinned under the title (e.g. the type selector). */
+  header?: ReactNode;
+  testId?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const { t } = useI18n();
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // The field marked data-autofocus gets the focus (and keeps the keyboard that the tap opened).
+      const target = dialog.querySelector<HTMLElement>('[data-autofocus]');
+      if (target && document.activeElement !== target) target.focus({ preventScroll: true });
+    }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  // Keyboard-aware sizing (iOS Safari doesn't resize the layout viewport for the keyboard).
+  // iOS Safari doesn't resize the layout viewport for the keyboard: follow the visual viewport so
+  // the footer stays visible above it.
   useEffect(() => {
-    if (!open || typeof window === 'undefined' || !window.visualViewport) return;
+    if (!open || !window.visualViewport) return;
     const vv = window.visualViewport;
     const dialog = ref.current;
     const update = () => {
@@ -60,51 +65,42 @@ export function Sheet({
   return (
     <dialog
       ref={ref}
-      aria-labelledby={labelledBy ?? titleId}
+      aria-labelledby={titleId}
+      data-testid={testId}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
       }}
       onClick={(e) => {
-        // Click on the backdrop (the dialog element itself, outside the panel) closes.
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        'fixed m-0 w-full max-w-none bg-transparent p-0 text-ink backdrop:bg-ink/45',
-        'inset-x-0 top-auto bottom-[var(--kb,0px)] max-h-[calc(var(--vvh,100dvh)-var(--safe-top)-0.75rem)]',
-        'sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[min(88dvh,52rem)]',
-        size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
-        'open:flex open:flex-col',
+        'fixed inset-x-0 top-auto bottom-[var(--kb,0px)] m-0 mx-auto w-full max-w-[480px] bg-transparent p-0 text-ink',
+        'max-h-[calc(var(--vvh,100dvh)-var(--safe-top)-12px)] open:flex open:flex-col',
       )}
     >
-      <div
-        className={cn(
-          'flex max-h-[inherit] min-h-0 flex-1 flex-col overflow-hidden bg-surface shadow-sheet',
-          'rounded-t-[1.75rem] animate-sheet-up sm:rounded-[1.75rem] sm:animate-fade-in',
-        )}
-      >
-        <div className="relative shrink-0 px-5 pb-2 pt-3 max-[359px]:px-4">
-          <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden />
+      <div className="flex max-h-[inherit] min-h-0 flex-1 animate-sheet-up flex-col overflow-hidden rounded-t-[24px] bg-surface">
+        <div className="shrink-0 px-5 pt-2.5">
+          <div className="mx-auto mb-1.5 h-1.5 w-10 rounded-full bg-line-strong" aria-hidden />
           <div className="flex items-center justify-between gap-3">
-            <h2 id={titleId} className="min-w-0 truncate text-lg font-semibold">
+            <h2 id={titleId} className="min-w-0 truncate text-[19px] font-bold">
               {title}
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-surface-2"
-              aria-label={t('common.close')}
+              aria-label={T.common.close}
+              className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-3 active:bg-soft"
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
+          {header && <div className="pb-3 pt-1">{header}</div>}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 max-[359px]:px-4">{open && children}</div>
-        {footer && (
-          <div className="shrink-0 border-t border-line bg-surface px-5 pt-3 pb-[max(0.75rem,var(--safe-bottom))] max-[359px]:px-4">
-            {footer}
-          </div>
-        )}
+        <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1', footer ? 'pb-4' : 'pb-[max(20px,var(--safe-bottom))]')}>
+          {open && children}
+        </div>
+        {footer && <div className="shrink-0 border-t border-line bg-surface px-5 pt-3 pb-[max(12px,var(--safe-bottom))]">{footer}</div>}
       </div>
     </dialog>
   );

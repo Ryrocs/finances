@@ -1,35 +1,47 @@
-/** "Nice" axis ticks (1, 2, 2.5, 5 × 10^n) covering [min, max] and always including 0. */
-export function niceTicks(min: number, max: number, target = 4): number[] {
-  let lo = Math.min(0, min);
-  let hi = Math.max(0, max);
-  if (lo === hi) hi = lo + 1;
-  const rawStep = (hi - lo) / target;
-  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
-  const residual = rawStep / magnitude;
+/** "Nice" step (1, 2, 2,5 or 5 × 10^n) for about `target` intervals over `span`. */
+function niceStep(span: number, target: number): number {
+  const raw = span / target;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const residual = raw / magnitude;
   const nice = residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 2.5 ? 2.5 : residual <= 5 ? 5 : 10;
-  const step = nice * magnitude;
-  lo = Math.floor(lo / step) * step;
-  hi = Math.ceil(hi / step) * step;
-  const ticks: number[] = [];
-  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
-  return ticks;
+  return nice * magnitude;
 }
 
-/** Nice ticks strictly inside [min, max] (not forced to include 0) — for line charts. */
-export function niceTicksInRange(min: number, max: number, target = 3): number[] {
-  if (max <= min) return [min];
-  const rawStep = (max - min) / target;
-  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
-  const residual = rawStep / magnitude;
-  const step = (residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 2.5 ? 2.5 : residual <= 5 ? 5 : 10) * magnitude;
+/**
+ * Y-axis fitted to the data (never forced down to 0), so variations are visible: the domain is
+ * [min, max] padded a little, and the ticks are the round values that fall inside it.
+ */
+export function fittedDomain(min: number, max: number, target = 4): { domain: [number, number]; ticks: number[] } {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return { domain: [0, 1], ticks: [0, 1] };
+  let lo = min;
+  let hi = max;
+  if (hi - lo < 1) {
+    // A flat line: open a small window around it (5 % of the value, at least 10 €).
+    const pad = Math.max(Math.abs(hi) * 0.05, 1000);
+    lo -= pad;
+    hi += pad;
+  } else {
+    const pad = (hi - lo) * 0.1;
+    lo -= pad;
+    hi += pad;
+  }
+  // Don't cross 0 just because of the padding.
+  if (min >= 0 && lo < 0) lo = 0;
+  const step = niceStep(hi - lo, target);
   const ticks: number[] = [];
-  for (let v = Math.ceil(min / step) * step; v <= max; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
-  return ticks;
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(Math.round(v));
+  return { domain: [Math.floor(lo), Math.ceil(hi)], ticks };
 }
 
-export function linearScale(domain: [number, number], range: [number, number]) {
-  const [d0, d1] = domain;
-  const [r0, r1] = range;
-  const k = d1 === d0 ? 0 : (r1 - r0) / (d1 - d0);
-  return (v: number) => r0 + (v - d0) * k;
+/** Axis including 0 (bars must grow from a zero baseline). */
+export function zeroBasedDomain(min: number, max: number, target = 4): { domain: [number, number]; ticks: number[] } {
+  const lo = Math.min(0, min);
+  const hi = Math.max(0, max);
+  if (hi - lo < 1) return { domain: [0, 1000], ticks: [0, 500, 1000] };
+  const step = niceStep(hi - lo, target);
+  const start = Math.floor(lo / step) * step;
+  const end = Math.ceil(hi / step) * step;
+  const ticks: number[] = [];
+  for (let v = start; v <= end + step / 2; v += step) ticks.push(Math.round(v));
+  return { domain: [start, end], ticks };
 }

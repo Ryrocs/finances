@@ -1,59 +1,84 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
-  addMonthsClamped,
-  addMonthsToKey,
-  daysInMonth,
+  addMonths,
+  clampDay,
+  daysInMonthKey,
   diffDays,
-  isLeapYear,
+  formatDayHeader,
+  formatLongDate,
+  formatMonthYear,
+  formatShortDate,
   isValidISODate,
   monthEnd,
   monthsBetween,
-  todayInTimeZone,
-} from '@/lib/dates';
+  today,
+  weekdayOf,
+} from '../../src/lib/dates';
 
-describe('calendar helpers', () => {
-  it('knows month lengths and leap years', () => {
-    expect(daysInMonth(2026, 2)).toBe(28);
-    expect(daysInMonth(2028, 2)).toBe(29);
-    expect(daysInMonth(2100, 2)).toBe(28);
-    expect(daysInMonth(2000, 2)).toBe(29);
-    expect(isLeapYear(2024)).toBe(true);
-    expect(monthEnd('2026-04')).toBe('2026-04-30');
-    expect(monthEnd('2028-02')).toBe('2028-02-29');
-  });
-
-  it('validates ISO dates strictly', () => {
-    expect(isValidISODate('2026-02-29')).toBe(false);
-    expect(isValidISODate('2028-02-29')).toBe(true);
-    expect(isValidISODate('2026-13-01')).toBe(false);
-    expect(isValidISODate('2026-1-01')).toBe(false);
-  });
-
-  it('adds days across month/year boundaries and DST changes', () => {
+describe('calendar arithmetic', () => {
+  it('adds days across months, years and DST changes', () => {
+    expect(addDays('2026-10-24', 2)).toBe('2026-10-26');
+    expect(addDays('2026-03-28', 2)).toBe('2026-03-30');
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
-    expect(addDays('2026-03-28', 2)).toBe('2026-03-30'); // DST in Europe
-    expect(diffDays('2026-03-01', '2026-04-01')).toBe(31);
-    expect(diffDays('2026-10-24', '2026-10-26')).toBe(2);
+    expect(addDays('2024-02-28', 1)).toBe('2024-02-29');
+    expect(diffDays('2026-01-01', '2026-12-31')).toBe(364);
   });
 
-  it('clamps month arithmetic to the end of shorter months', () => {
-    expect(addMonthsClamped('2026-01-31', 1)).toBe('2026-02-28');
-    expect(addMonthsClamped('2028-01-31', 1)).toBe('2028-02-29');
-    expect(addMonthsClamped('2026-01-31', 2, 31)).toBe('2026-03-31');
-    expect(addMonthsClamped('2026-03-31', -1)).toBe('2026-02-28');
-    expect(addMonthsClamped('2026-11-15', 3)).toBe('2027-02-15');
+  it('handles month keys', () => {
+    expect(addMonths('2026-11', 2)).toBe('2027-01');
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(monthEnd('2024-02')).toBe('2024-02-29');
+    expect(monthEnd('2026-02')).toBe('2026-02-28');
+    expect(daysInMonthKey('2026-10')).toBe(31);
+    expect(monthsBetween('2026-11', '2027-02')).toEqual(['2026-11', '2026-12', '2027-01', '2027-02']);
   });
 
-  it('iterates months', () => {
-    expect(addMonthsToKey('2026-01', -1)).toBe('2025-12');
-    expect(monthsBetween('2025-11', '2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
+  it('clamps day 31 to the last day of shorter months', () => {
+    expect(clampDay('2026-02', 31)).toBe('2026-02-28');
+    expect(clampDay('2024-02', 31)).toBe('2024-02-29');
+    expect(clampDay('2026-04', 31)).toBe('2026-04-30');
+    expect(clampDay('2026-05', 31)).toBe('2026-05-31');
   });
 
-  it('computes "today" in the user time zone', () => {
-    const lateUtc = new Date('2026-10-05T23:30:00Z');
-    expect(todayInTimeZone('Europe/Madrid', lateUtc)).toBe('2026-10-06');
-    expect(todayInTimeZone('America/New_York', lateUtc)).toBe('2026-10-05');
-    expect(todayInTimeZone('Not/AZone', lateUtc)).toBe('2026-10-06');
+  it('weeks start on Monday', () => {
+    expect(weekdayOf('2026-10-05')).toBe(1);
+    expect(weekdayOf('2026-10-11')).toBe(7);
+  });
+
+  it('validates dates', () => {
+    expect(isValidISODate('2026-02-29')).toBe(false);
+    expect(isValidISODate('2024-02-29')).toBe(true);
+    expect(isValidISODate('2026-13-01')).toBe(false);
+    expect(isValidISODate('26-10-01')).toBe(false);
+  });
+
+  it("uses the device's local calendar for today, not UTC", () => {
+    // 00:30 local time on 5 October is still 5 October whatever the UTC date is.
+    expect(today(new Date(2026, 9, 5, 0, 30))).toBe('2026-10-05');
+    expect(today(new Date(2026, 9, 5, 23, 59))).toBe('2026-10-05');
+  });
+});
+
+describe('Catalan formatting', () => {
+  it('formats day headers', () => {
+    expect(formatDayHeader('2026-10-05')).toBe("dl., 5 d'oct.");
+    expect(formatDayHeader('2026-10-11')).toBe("dg., 11 d'oct.");
+    expect(formatDayHeader('2026-03-04')).toBe('dc., 4 de març');
+    expect(formatDayHeader('2026-08-07')).toBe("dv., 7 d'ag.");
+    expect(formatDayHeader('2026-01-01')).toBe('dj., 1 de gen.');
+  });
+
+  it('formats months', () => {
+    expect(formatMonthYear('2026-10')).toBe('Octubre 2026');
+    expect(formatMonthYear('2026-10', false)).toBe('octubre 2026');
+    expect(formatMonthYear('2026-03')).toBe('Març 2026');
+  });
+
+  it('formats dates', () => {
+    expect(formatLongDate('2026-04-05')).toBe("5 d'abril de 2026");
+    expect(formatLongDate('2026-12-24')).toBe('24 de desembre de 2026');
+    expect(formatShortDate('2026-10-05', 2026)).toBe("5 d'oct.");
+    expect(formatShortDate('2025-10-05', 2026)).toBe("5 d'oct. 2025");
   });
 });

@@ -1,49 +1,75 @@
 /**
- * Recurring schedule maths. Occurrence k is computed from the start date (not from the previous
+ * Recurring schedules. Occurrences are derived from the rule itself (not from the previous
  * occurrence), so a rule on the 31st yields Jan 31, Feb 28/29, Mar 31… without drifting.
  */
-import { addDays, addMonthsClamped, parseISODate } from '../dates';
-import type { Frequency } from '../types';
+import { addDays, clampDay, maxDate, minDate, monthOf, monthsBetween, parseISODate, weekdayOf, type ISODate } from '../dates';
+import type { RecurringRule } from '../types';
 
-export interface Schedule {
-  frequency: Frequency;
-  interval: number;
-  startDate: string;
-  endDate: string | null;
+type Schedule = Pick<RecurringRule, 'frequency' | 'dayOfMonth' | 'weekday' | 'startDate' | 'endDate'>;
+
+/** Safety cap so a malformed rule can never create an unbounded number of rows in one run. */
+export const MAX_OCCURRENCES = 1000;
+
+export function ruleDay(rule: Schedule): number {
+  return rule.dayOfMonth ?? parseISODate(rule.startDate).d;
 }
 
-/** Safety cap so a malformed rule can never generate an unbounded number of rows. */
-export const MAX_OCCURRENCES_PER_RUN = 500;
-
-export function occurrenceAt(schedule: Schedule, k: number): string {
-  const step = Math.max(1, schedule.interval);
-  if (schedule.frequency === 'weekly') return addDays(schedule.startDate, 7 * step * k);
-  const anchorDay = parseISODate(schedule.startDate).d;
-  const months = schedule.frequency === 'monthly' ? step * k : 12 * step * k;
-  return addMonthsClamped(schedule.startDate, months, anchorDay);
+export function ruleWeekday(rule: Schedule): number {
+  return rule.weekday ?? weekdayOf(rule.startDate);
 }
 
-/**
- * Occurrences strictly after `after` (or from the start when null) and up to `until` inclusive,
- * bounded by the end date.
- */
-export function occurrencesBetween(schedule: Schedule, after: string | null, until: string): string[] {
-  const out: string[] = [];
-  const limit = schedule.endDate && schedule.endDate < until ? schedule.endDate : until;
-  for (let k = 0; k < 100_000 && out.length < MAX_OCCURRENCES_PER_RUN; k++) {
-    const date = occurrenceAt(schedule, k);
-    if (date > limit) break;
-    if (after === null || date > after) out.push(date);
+/** Occurrences of the rule between `from` and `to` (both inclusive), never before the start or after the end. */
+export function occurrencesBetween(rule: Schedule, from: ISODate, to: ISODate): ISODate[] {
+  const start = maxDate(rule.startDate, from);
+  const end = rule.endDate ? minDate(rule.endDate, to) : to;
+  if (end < start) return [];
+  const out: ISODate[] = [];
+
+  if (rule.frequency === 'weekly') {
+    const wanted = ruleWeekday(rule);
+    let date = addDays(start, (wanted - weekdayOf(start) + 7) % 7);
+    while (date <= end && out.length < MAX_OCCURRENCES) {
+      out.push(date);
+      date = addDays(date, 7);
+    }
+    return out;
+  }
+
+  const day = ruleDay(rule);
+  const yearlyMonth = rule.startDate.slice(5, 7);
+  for (const month of monthsBetween(monthOf(start), monthOf(end))) {
+    if (rule.frequency === 'yearly' && month.slice(5, 7) !== yearlyMonth) continue;
+    const date = clampDay(month, day);
+    if (date >= start && date <= end) out.push(date);
+    if (out.length >= MAX_OCCURRENCES) break;
   }
   return out;
 }
 
-/** Next occurrence strictly after `after` (or the first one), or null if the rule has ended. */
-export function nextOccurrence(schedule: Schedule, after: string | null): string | null {
-  for (let k = 0; k < 100_000; k++) {
-    const date = occurrenceAt(schedule, k);
-    if (schedule.endDate && date > schedule.endDate) return null;
-    if (after === null || date > after) return date;
-  }
-  return null;
+/** Occurrences still to be generated up to `today` (after `lastGeneratedDate`). */
+export function pendingOccurrences(rule: RecurringRule, today: ISODate): ISODate[] {
+  if (!rule.active) return [];
+  const from = rule.lastGeneratedDate ? addDays(rule.lastGeneratedDate, 1) : rule.startDate;
+  return occurrencesBetween(rule, from, today);
+}
+
+/** Next occurrence not generated yet (looking far enough ahead for a yearly rule), or null if the rule has ended. */
+export function nextOccurrence(rule: RecurringRule, today: ISODate): ISODate | null {
+  const from = rule.lastGeneratedDate ? addDays(rule.lastGeneratedDate, 1) : rule.startDate;
+  return occurrencesBetween(rule, from, addDays(maxDate(from, today), 800))[0] ?? null;
+}
+
+/**
+ * When a paused rule is resumed it continues from today: the occurrences of the paused period
+ * are skipped, not created retroactively.
+ */
+export function resumeFrom(rule: RecurringRule, today: ISODate): ISODate | undefined {
+  const yesterday = addDays(today, -1);
+  if (yesterday < rule.startDate) return rule.lastGeneratedDate;
+  return rule.lastGeneratedDate && rule.lastGeneratedDate > yesterday ? rule.lastGeneratedDate : yesterday;
+}
+
+/** Deterministic id of the movement generated for one occurrence: the same occurrence can never be created twice. */
+export function recurringTransactionId(ruleId: string, date: ISODate): string {
+  return `rec_${ruleId}_${date}`;
 }
