@@ -95,7 +95,11 @@ s'elimina no es torna a crear. Pausar una regla i reprendre-la no crea el perío
 - `viewport-fit=cover` i `env(safe-area-inset-*)` a la capçalera, la barra inferior, el botó «+» i els
   fulls inferiors; alçades amb `dvh`; inputs de 16 px (sense zoom); zones tàctils ≥ 44 px.
 - Fulls inferiors amb `<dialog>` natiu (capa superior: sempre per sobre de la barra) i el botó
-  Guardar fora de la zona que fa scroll, desplaçat per sobre del teclat amb `visualViewport`.
+  Guardar fora de la zona que fa scroll. El `<dialog>` cobreix exactament la zona visible
+  (`visualViewport.height` i `offsetTop`) i el full s'alinea a sota de tot, de manera que acaba just
+  per sobre del teclat. No es calcula l'alçada del teclat a partir de `window.innerHeight`: a iOS 26
+  també s'encongeix i el full quedava amagat darrere el teclat (`tests/e2e/keyboard.spec.ts` ho
+  simula).
 - Entrada ràpida: el «+» enfoca un input numèric ocult durant el toc (iOS només obre el teclat
   així) i el full passa el focus al camp Import.
 - El *service worker* precarrega l'app; una versió nova s'activa sola. Les dades són a IndexedDB i

@@ -6,7 +6,13 @@ import { cn } from './cn';
 /**
  * Bottom sheet built on the native <dialog> (top layer: always above the tab bar and the floating
  * button; focus trap and Escape for free). The footer — where "Guardar" lives — is outside the
- * scrolling area, padded for the iPhone home indicator and lifted above the on-screen keyboard.
+ * scrolling area and padded for the iPhone home indicator.
+ *
+ * On-screen keyboard: the dialog is a transparent layer that covers exactly the *visible* part of
+ * the screen (the visual viewport) and the sheet sits at its bottom, so it always ends right above
+ * the keyboard. This only relies on visualViewport.height/offsetTop, which iOS reports consistently;
+ * deriving a keyboard height from window.innerHeight doesn't work on every iOS version (on iOS 26
+ * innerHeight shrinks too, and the sheet ended up hidden behind the keyboard).
  */
 export function Sheet({
   open,
@@ -41,24 +47,41 @@ export function Sheet({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  // iOS Safari doesn't resize the layout viewport for the keyboard: follow the visual viewport so
-  // the footer stays visible above it.
   useEffect(() => {
-    if (!open || !window.visualViewport) return;
-    const vv = window.visualViewport;
     const dialog = ref.current;
-    const update = () => {
-      if (!dialog) return;
-      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      dialog.style.setProperty('--kb', `${keyboard}px`);
-      dialog.style.setProperty('--vvh', `${vv.height}px`);
+    const vv = window.visualViewport;
+    if (!open || !dialog || !vv) return;
+    const fit = () => {
+      const longSide = Math.max(window.screen?.height || 0, window.screen?.width || 0) || vv.height;
+      // Ignore implausible readings (some iOS versions report 0 mid-animation): the CSS fallback
+      // (full height) keeps the sheet usable.
+      if (vv.height < 200 || vv.height > longSide + 1) {
+        dialog.style.removeProperty('top');
+        dialog.style.removeProperty('height');
+        dialog.removeAttribute('data-keyboard');
+        return;
+      }
+      dialog.style.top = `${Math.max(0, vv.offsetTop)}px`;
+      dialog.style.height = `${vv.height}px`;
+      // With the keyboard up the home indicator is hidden: no need for its bottom padding.
+      dialog.toggleAttribute('data-keyboard', vv.height < longSide * 0.75 && window.matchMedia('(orientation: portrait)').matches);
     };
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    fit();
+    // The keyboard animates in; iOS doesn't always fire resize at the end of it.
+    const timers = [80, 250, 500, 900].map((ms) => window.setTimeout(fit, ms));
+    const refitSoon = () => timers.push(window.setTimeout(fit, 350));
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    window.addEventListener('resize', fit);
+    dialog.addEventListener('focusin', refitSoon);
+    dialog.addEventListener('focusout', refitSoon);
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      timers.forEach((t) => window.clearTimeout(t));
+      vv.removeEventListener('resize', fit);
+      vv.removeEventListener('scroll', fit);
+      window.removeEventListener('resize', fit);
+      dialog.removeEventListener('focusin', refitSoon);
+      dialog.removeEventListener('focusout', refitSoon);
     };
   }, [open]);
 
@@ -72,14 +95,15 @@ export function Sheet({
         onClose();
       }}
       onClick={(e) => {
+        // A tap on the transparent area above the sheet closes it.
         if (e.target === ref.current) onClose();
       }}
-      className={cn(
-        'fixed inset-x-0 top-auto bottom-[var(--kb,0px)] m-0 mx-auto w-full max-w-[480px] bg-transparent p-0 text-ink',
-        'max-h-[calc(var(--vvh,100dvh)-var(--safe-top)-12px)] open:flex open:flex-col',
-      )}
+      className="group fixed inset-x-0 top-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 text-ink open:flex open:flex-col open:justify-end"
     >
-      <div className="flex max-h-[inherit] min-h-0 flex-1 animate-sheet-up flex-col overflow-hidden rounded-t-[24px] bg-surface">
+      <div
+        data-sheet-panel
+        className="mx-auto flex max-h-[calc(100%-var(--safe-top)-12px)] min-h-0 w-full max-w-[480px] animate-sheet-up flex-col overflow-hidden rounded-t-[24px] bg-surface"
+      >
         <div className="shrink-0 px-5 pt-2.5">
           <div className="mx-auto mb-1.5 h-1.5 w-10 rounded-full bg-line-strong" aria-hidden />
           <div className="flex items-center justify-between gap-3">
@@ -97,10 +121,17 @@ export function Sheet({
           </div>
           {header && <div className="pb-3 pt-1">{header}</div>}
         </div>
-        <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1', footer ? 'pb-4' : 'pb-[max(20px,var(--safe-bottom))]')}>
+        <div
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1',
+            footer ? 'pb-4' : 'pb-[max(20px,var(--safe-bottom))] group-data-[keyboard]:pb-5',
+          )}
+        >
           {open && children}
         </div>
-        {footer && <div className="shrink-0 border-t border-line bg-surface px-5 pt-3 pb-[max(12px,var(--safe-bottom))]">{footer}</div>}
+        {footer && (
+          <div className="shrink-0 border-t border-line bg-surface px-5 pt-3 pb-[max(12px,var(--safe-bottom))] group-data-[keyboard]:pb-3">{footer}</div>
+        )}
       </div>
     </dialog>
   );
