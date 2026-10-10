@@ -128,6 +128,7 @@ function AccountSheet({ account, onClose }: { account: Account | null; onClose: 
         onClose={onClose}
         title={account ? t.editTitle : t.newTitle}
         testId="account-sheet"
+        fill
         footer={
           <div className="flex gap-3">
             {account && (

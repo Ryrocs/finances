@@ -105,6 +105,7 @@ function CategorySheet({ category, initialKind, onClose }: { category: Category 
         onClose={onClose}
         title={category ? c.editTitle : c.newTitle}
         testId="category-sheet"
+        fill
         footer={
           <div className="flex gap-3">
             {category && (

@@ -3,16 +3,44 @@ import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { T } from '../../texts';
 import { cn } from './cn';
 
+/** Inputs that bring up the on-screen keyboard (date/time fields open a picker instead). */
+const NON_TEXT_INPUTS = new Set(['button', 'checkbox', 'color', 'date', 'datetime-local', 'file', 'hidden', 'image', 'month', 'radio', 'range', 'reset', 'submit', 'time', 'week']);
+
+function opensKeyboard(el: Element | null): boolean {
+  if (!el) return false;
+  if (el instanceof HTMLTextAreaElement) return !el.readOnly;
+  if (el instanceof HTMLInputElement) return !el.readOnly && !NON_TEXT_INPUTS.has(el.type);
+  return el instanceof HTMLElement && el.isContentEditable;
+}
+
+/**
+ * Height of the on-screen keyboard, or 0.
+ *
+ * iOS doesn't resize the layout viewport for the keyboard: fixed elements stay anchored to the
+ * bottom of the screen, behind it. The keyboard is the part of the layout viewport the visual
+ * viewport no longer covers. On iOS 26 window.innerHeight shrinks along with the visual viewport
+ * (so innerHeight − visualViewport.height reads 0), while documentElement.clientHeight keeps the
+ * full height: take the larger of the two. Only measured while a text field is focused, because
+ * installed web apps can report a small constant difference even without a keyboard.
+ */
+export function keyboardInset(): number {
+  const vv = window.visualViewport;
+  if (!vv || !opensKeyboard(document.activeElement)) return 0;
+  const layout = Math.max(window.innerHeight, document.documentElement.clientHeight);
+  const inset = layout - vv.height - Math.max(0, vv.offsetTop);
+  // Ignore readings that can't be a keyboard (e.g. 0 mid-animation, or bogus values).
+  return inset > 80 && inset < layout * 0.75 ? Math.round(inset) : 0;
+}
+
 /**
  * Bottom sheet built on the native <dialog> (top layer: always above the tab bar and the floating
  * button; focus trap and Escape for free). The footer — where "Guardar" lives — is outside the
  * scrolling area and padded for the iPhone home indicator.
  *
- * On-screen keyboard: the dialog is a transparent layer that covers exactly the *visible* part of
- * the screen (the visual viewport) and the sheet sits at its bottom, so it always ends right above
- * the keyboard. This only relies on visualViewport.height/offsetTop, which iOS reports consistently;
- * deriving a keyboard height from window.innerHeight doesn't work on every iOS version (on iOS 26
- * innerHeight shrinks too, and the sheet ended up hidden behind the keyboard).
+ * The dialog spans from the top of the screen down to the keyboard (`--kb`). Forms use
+ * `fill`: the sheet is anchored to the top and fills that space, so even if a browser reports the
+ * keyboard wrongly, its title and first fields are always visible above it, and when the
+ * measurement is right "Guardar" sits just above the keyboard.
  */
 export function Sheet({
   open,
@@ -22,6 +50,7 @@ export function Sheet({
   footer,
   header,
   testId,
+  fill = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,6 +60,8 @@ export function Sheet({
   /** Extra content pinned under the title (e.g. the type selector). */
   header?: ReactNode;
   testId?: string;
+  /** Full-height sheet anchored to the top (forms with text fields). */
+  fill?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -49,39 +80,37 @@ export function Sheet({
 
   useEffect(() => {
     const dialog = ref.current;
-    const vv = window.visualViewport;
-    if (!open || !dialog || !vv) return;
-    const fit = () => {
-      const longSide = Math.max(window.screen?.height || 0, window.screen?.width || 0) || vv.height;
-      // Ignore implausible readings (some iOS versions report 0 mid-animation): the CSS fallback
-      // (full height) keeps the sheet usable.
-      if (vv.height < 200 || vv.height > longSide + 1) {
-        dialog.style.removeProperty('top');
-        dialog.style.removeProperty('height');
-        dialog.removeAttribute('data-keyboard');
-        return;
-      }
-      dialog.style.top = `${Math.max(0, vv.offsetTop)}px`;
-      dialog.style.height = `${vv.height}px`;
-      // With the keyboard up the home indicator is hidden: no need for its bottom padding.
-      dialog.toggleAttribute('data-keyboard', vv.height < longSide * 0.75 && window.matchMedia('(orientation: portrait)').matches);
+    if (!open || !dialog) return;
+    let frame = 0;
+    const measure = () => {
+      const kb = keyboardInset();
+      dialog.style.setProperty('--kb', `${kb}px`);
+      dialog.toggleAttribute('data-keyboard', kb > 0);
     };
-    fit();
-    // The keyboard animates in; iOS doesn't always fire resize at the end of it.
-    const timers = [80, 250, 500, 900].map((ms) => window.setTimeout(fit, ms));
-    const refitSoon = () => timers.push(window.setTimeout(fit, 350));
-    vv.addEventListener('resize', fit);
-    vv.addEventListener('scroll', fit);
-    window.addEventListener('resize', fit);
-    dialog.addEventListener('focusin', refitSoon);
-    dialog.addEventListener('focusout', refitSoon);
+    // Read two frames later, once the viewport values have settled.
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(measure);
+      });
+    };
+    measure();
+    // The keyboard animates in and iOS doesn't always fire resize at the end of it.
+    const timers = [100, 300, 600, 1000].map((ms) => window.setTimeout(schedule, ms));
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', schedule);
+    vv?.addEventListener('scroll', schedule);
+    window.addEventListener('resize', schedule);
+    document.addEventListener('focusin', schedule);
+    document.addEventListener('focusout', schedule);
     return () => {
+      cancelAnimationFrame(frame);
       timers.forEach((t) => window.clearTimeout(t));
-      vv.removeEventListener('resize', fit);
-      vv.removeEventListener('scroll', fit);
-      window.removeEventListener('resize', fit);
-      dialog.removeEventListener('focusin', refitSoon);
-      dialog.removeEventListener('focusout', refitSoon);
+      vv?.removeEventListener('resize', schedule);
+      vv?.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      document.removeEventListener('focusin', schedule);
+      document.removeEventListener('focusout', schedule);
     };
   }, [open]);
 
@@ -95,14 +124,21 @@ export function Sheet({
         onClose();
       }}
       onClick={(e) => {
-        // A tap on the transparent area above the sheet closes it.
+        // A tap on the transparent area around the sheet closes it.
         if (e.target === ref.current) onClose();
       }}
-      className="group fixed inset-x-0 top-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 text-ink open:flex open:flex-col open:justify-end"
+      className={cn(
+        'group fixed inset-x-0 top-0 bottom-[var(--kb,0px)] m-0 h-auto max-h-none w-full max-w-none bg-transparent p-0 text-ink',
+        'open:flex open:flex-col',
+        fill ? 'open:justify-start' : 'open:justify-end',
+      )}
     >
       <div
         data-sheet-panel
-        className="mx-auto flex max-h-[calc(100%-var(--safe-top)-12px)] min-h-0 w-full max-w-[480px] animate-sheet-up flex-col overflow-hidden rounded-t-[24px] bg-surface"
+        className={cn(
+          'mx-auto flex min-h-0 w-full max-w-[480px] animate-sheet-up flex-col overflow-hidden rounded-t-[24px] bg-surface',
+          fill ? 'mt-[calc(var(--safe-top)+12px)] flex-1' : 'max-h-[calc(100%-var(--safe-top)-12px)]',
+        )}
       >
         <div className="shrink-0 px-5 pt-2.5">
           <div className="mx-auto mb-1.5 h-1.5 w-10 rounded-full bg-line-strong" aria-hidden />

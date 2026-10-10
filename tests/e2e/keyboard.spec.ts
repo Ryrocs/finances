@@ -86,6 +86,26 @@ for (const ios26 of [false, true]) {
   });
 }
 
+test('even if the browser never reports the keyboard, the top of the form stays above it', async ({ page }) => {
+  // Worst case: visualViewport doesn't change at all. The keyboard still covers the bottom ~45 %.
+  await start(page);
+  await page.getByRole('button', { name: 'Començar' }).click();
+  await page.getByTestId('onboarding-finish').click();
+  await goToMore(page);
+  await page.getByTestId('fab').click();
+  const form = page.getByTestId('movement-form');
+  const keyboardTop = page.viewportSize()!.height * 0.55;
+  const panel = (await form.locator('[data-sheet-panel]').boundingBox())!;
+  // The form sheet is anchored to the top of the screen…
+  expect(panel.y).toBeLessThanOrEqual(24);
+  // …so its title, type selector and amount field are never under the keyboard.
+  for (const locator of [form.getByRole('heading', { name: 'Nou moviment' }), form.getByRole('radio', { name: 'Despesa' }), form.getByLabel('Import', { exact: true })]) {
+    const box = (await locator.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(keyboardTop);
+  }
+  await expect(form.getByLabel('Import', { exact: true })).toBeFocused();
+});
+
 async function goToMore(page: Page) {
   await page.getByRole('navigation', { name: 'Navegació principal' }).getByRole('link', { name: 'Més' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Més' })).toBeVisible();

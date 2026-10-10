@@ -309,7 +309,7 @@ export const T = {
     backupNever: 'Encara no has fet cap còpia de seguretat.',
     backupOld: (days: number) => `Fa ${days} dies que no fas cap còpia de seguretat.`,
     backupAction: 'Fer-ne una',
-    version: (v: string) => `Versió ${v}`,
+    version: (v: string, build: string) => (build ? `Versió ${v} (${build})` : `Versió ${v}`),
   },
 
   accounts: {

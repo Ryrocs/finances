@@ -95,11 +95,13 @@ s'elimina no es torna a crear. Pausar una regla i reprendre-la no crea el perío
 - `viewport-fit=cover` i `env(safe-area-inset-*)` a la capçalera, la barra inferior, el botó «+» i els
   fulls inferiors; alçades amb `dvh`; inputs de 16 px (sense zoom); zones tàctils ≥ 44 px.
 - Fulls inferiors amb `<dialog>` natiu (capa superior: sempre per sobre de la barra) i el botó
-  Guardar fora de la zona que fa scroll. El `<dialog>` cobreix exactament la zona visible
-  (`visualViewport.height` i `offsetTop`) i el full s'alinea a sota de tot, de manera que acaba just
-  per sobre del teclat. No es calcula l'alçada del teclat a partir de `window.innerHeight`: a iOS 26
-  també s'encongeix i el full quedava amagat darrere el teclat (`tests/e2e/keyboard.spec.ts` ho
-  simula).
+  Guardar fora de la zona que fa scroll. El `<dialog>` va de dalt de la pantalla fins al teclat
+  (`--kb`). L'alçada del teclat és `max(innerHeight, documentElement.clientHeight) −
+  visualViewport.height`, mesurada només amb un camp de text actiu: a iOS 26 `innerHeight`
+  s'encongeix amb el teclat i, si es mesura només amb aquest valor, el teclat dona 0 i el full queda
+  darrere seu. Els formularis fan servir fulls ancorats a dalt (`fill`): encara que el navegador
+  informi malament del teclat, el títol i l'import queden sempre visibles. `tests/e2e/keyboard.spec.ts`
+  ho simula.
 - Entrada ràpida: el «+» enfoca un input numèric ocult durant el toc (iOS només obre el teclat
   així) i el full passa el focus al camp Import.
 - El *service worker* precarrega l'app; una versió nova s'activa sola. Les dades són a IndexedDB i

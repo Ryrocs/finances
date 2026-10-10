@@ -221,6 +221,7 @@ export function MovementForm({ mode, onClose }: { mode: FormMode; onClose: () =>
       onClose={onClose}
       title={title}
       testId="movement-form"
+      fill
       header={<Segmented label={T.detail.type} value={type} options={TYPE_OPTIONS} onChange={changeType} />}
       footer={
         <Button block size="lg" onClick={submit} disabled={busy} data-testid="save-movement">

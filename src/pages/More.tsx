@@ -63,7 +63,7 @@ export function MorePage() {
           </ul>
         </Card>
         <p className="px-1 pt-2 text-center text-[12px] text-ink-4">
-          {T.appName} · {t.version(__APP_VERSION__)}
+          {T.appName} · {t.version(__APP_VERSION__, __APP_BUILD__)}
         </p>
       </div>
     </>
